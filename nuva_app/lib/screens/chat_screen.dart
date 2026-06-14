@@ -197,14 +197,34 @@ class _Header extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Text(sp.fullName,
-                        style: TextStyle(
-                          color: t.text,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                        )),
+                    Flexible(
+                      child: Text(sp.fullName,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: t.text,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ),
                     const SizedBox(width: 4),
                     Icon(Icons.verified_rounded, color: t.blue, size: 12),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: t.blue.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        s.psychologist,
+                        style: TextStyle(
+                          color: t.blue,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 Text(

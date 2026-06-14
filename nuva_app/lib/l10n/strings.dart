@@ -45,9 +45,9 @@ class S {
         AppLang.en: 'In your language, when you want to talk.',
       });
   String get obTitle2 => _pick({
-        AppLang.ru: 'ИИ-помощник на старте',
-        AppLang.kk: 'Бастапқы ЖИ-көмекші',
-        AppLang.en: 'AI helper to get started',
+        AppLang.ru: 'Поможем с подбором',
+        AppLang.kk: 'Таңдауға көмектесеміз',
+        AppLang.en: 'We help you match',
       });
   String get obSub2 => _pick({
         AppLang.ru: 'Короткий разговор — и мы подберём психолога.',
@@ -123,9 +123,9 @@ class S {
         AppLang.en: 'Find a specialist',
       });
   String get aiHelp => _pick({
-        AppLang.ru: 'Чат с ИИ',
-        AppLang.kk: 'ЖИ-чат',
-        AppLang.en: 'AI chat',
+        AppLang.ru: 'Помощь в подборе',
+        AppLang.kk: 'Маман таңдауға көмек',
+        AppLang.en: 'Help matching',
       });
   String get calm => _pick({
         AppLang.ru: 'Успокоиться',
@@ -401,6 +401,11 @@ class S {
         AppLang.ru: 'Психолог Nuva',
         AppLang.kk: 'Nuva психологы',
         AppLang.en: 'Nuva psychologist',
+      });
+  String get psychologist => _pick({
+        AppLang.ru: 'Психолог',
+        AppLang.kk: 'Психолог',
+        AppLang.en: 'Psychologist',
       });
   String get replyHint => _pick({
         AppLang.ru: 'Ответить с поддержкой…',
