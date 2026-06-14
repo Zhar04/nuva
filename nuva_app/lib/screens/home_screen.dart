@@ -23,10 +23,18 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       body: GlassBackdrop(
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(specialistsProvider);
+              await ref.read(specialistsProvider.future);
+            },
+            color: t.blue,
+            backgroundColor: t.surface,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
@@ -88,7 +96,7 @@ class HomeScreen extends ConsumerWidget {
                 _EmergencyCard(label: s.needHelpNow),
               ],
             ),
-          ),
+          )),
         ),
       ),
     );
@@ -143,12 +151,18 @@ class _MoodRowState extends ConsumerState<_MoodRow> {
     }
   }
 
-  static const _moods = [
-    ('😔', 'Грустно'),
-    ('😟', 'Тревожно'),
-    ('😐', 'Так себе'),
-    ('🙂', 'Норм'),
-    ('😊', 'Хорошо'),
+  // Mood orbs: gradient circle + white line-face icon along a gentle spectrum.
+  static const _moods = <(IconData, String, List<Color>)>[
+    (Icons.sentiment_very_dissatisfied_rounded, 'Грустно',
+        [Color(0xFF8E9BE6), Color(0xFFB3BCF0)]),
+    (Icons.sentiment_dissatisfied_rounded, 'Тревожно',
+        [Color(0xFFF2A65A), Color(0xFFF7C48B)]),
+    (Icons.sentiment_neutral_rounded, 'Так себе',
+        [Color(0xFF93A0B5), Color(0xFFB7C0CE)]),
+    (Icons.sentiment_satisfied_rounded, 'Норм',
+        [Color(0xFF49C6C0), Color(0xFF86DED6)]),
+    (Icons.sentiment_very_satisfied_rounded, 'Хорошо',
+        [Color(0xFF5DC98A), Color(0xFF8FE0AC)]),
   ];
 
   @override
@@ -161,31 +175,59 @@ class _MoodRowState extends ConsumerState<_MoodRow> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(_moods.length, (i) {
+          final m = _moods[i];
           final picked = _picked == i;
           return GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               setState(() => _picked = i);
               _save(i + 1);
             },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              decoration: BoxDecoration(
-                color: picked ? t.blue.withValues(alpha: 0.2) : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
+            child: AnimatedScale(
+              scale: picked ? 1.0 : 0.9,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_moods[i].$1,
-                      style: const TextStyle(fontSize: 26)),
-                  const SizedBox(height: 4),
-                  Text(_moods[i].$2,
-                      style: TextStyle(
-                        color: picked ? t.blue : t.textSec,
-                        fontSize: 10.5,
-                        fontWeight:
-                            picked ? FontWeight.w700 : FontWeight.w500,
-                      )),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: m.$3,
+                      ),
+                      border: Border.all(
+                        color: Colors.white
+                            .withValues(alpha: picked ? 0.55 : 0.18),
+                        width: picked ? 1.5 : 1,
+                      ),
+                      boxShadow: picked
+                          ? [
+                              BoxShadow(
+                                color: m.$3.last.withValues(alpha: 0.55),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(m.$1, color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    m.$2,
+                    style: TextStyle(
+                      color: picked ? t.text : t.textSec,
+                      fontSize: 10.5,
+                      fontWeight: picked ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),

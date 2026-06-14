@@ -55,19 +55,28 @@ class SpecialistsScreen extends ConsumerWidget {
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (_, __) => const SizedBox.shrink(),
-                      data: (list) => ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                        itemCount: list.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (_, i) {
-                          final sp = list[i];
-                          return _SpecialistCard(
-                            sp: sp,
-                            onTap: () =>
-                                context.push('/specialists/${sp.id}'),
-                          );
+                      data: (list) => RefreshIndicator(
+                        onRefresh: () async {
+                          ref.invalidate(specialistsProvider);
+                          await ref.read(specialistsProvider.future);
                         },
+                        color: t.blue,
+                        backgroundColor: t.surface,
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                          itemCount: list.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (_, i) {
+                            final sp = list[i];
+                            return _SpecialistCard(
+                              sp: sp,
+                              onTap: () =>
+                                  context.push('/specialists/${sp.id}'),
+                            );
+                          },
+                        ),
                       ),
                     ),
               ),

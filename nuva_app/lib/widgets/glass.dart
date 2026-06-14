@@ -24,6 +24,31 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
+    // Liquid Glass: elevated cards get a crisp top sheen + a soft blue-tinted
+    // lift shadow so they read as tappable glass floating above the backdrop
+    // (instead of flat grey panels).
+    final sheen = elevated
+        ? LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white.withValues(alpha: t.dark ? 0.18 : 0.55),
+              Colors.white.withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.28],
+          )
+        : null;
+    final shadows = elevated
+        ? <BoxShadow>[
+            ...t.glassShine,
+            BoxShadow(
+              color: t.blue.withValues(alpha: t.dark ? 0.22 : 0.15),
+              blurRadius: 30,
+              spreadRadius: -8,
+              offset: const Offset(0, 16),
+            ),
+          ]
+        : null;
     final card = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
@@ -32,9 +57,20 @@ class GlassCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: elevated ? t.glassBgUp : t.glassBgDown,
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: t.glassBorder, width: 1),
-            boxShadow: elevated ? t.glassShine : null,
+            border: Border.all(
+              color: elevated
+                  ? (t.dark ? const Color(0x4DFFFFFF) : const Color(0x70FFFFFF))
+                  : t.glassBorder,
+              width: 1,
+            ),
+            boxShadow: shadows,
           ),
+          foregroundDecoration: sheen == null
+              ? null
+              : BoxDecoration(
+                  borderRadius: BorderRadius.circular(radius),
+                  gradient: sheen,
+                ),
           padding: padding,
           child: child,
         ),

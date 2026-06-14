@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,7 +24,6 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(ref);
-    final t = context.nuva;
 
     final pages = const [
       HomeScreen(),
@@ -33,75 +34,139 @@ class _MainShellState extends ConsumerState<MainShell> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _idx, children: pages),
-      bottomNavigationBar: _TabBar(
-        index: _idx,
-        labels: [
-          (Icons.home_rounded, s.tabHome),
-          (Icons.search_rounded, s.tabSpecialists),
-          (Icons.forum_rounded, s.tabCommunity),
-          (Icons.spa_rounded, s.tabCalm),
-          (Icons.person_rounded, s.tabProfile),
+      extendBody: true,
+      body: Stack(
+        children: [
+          IndexedStack(index: _idx, children: pages),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _FloatingNavBar(
+              index: _idx,
+              items: [
+                (Icons.home_rounded, s.tabHome),
+                (Icons.search_rounded, s.tabSpecialists),
+                (Icons.forum_rounded, s.tabCommunity),
+                (Icons.spa_rounded, s.tabCalm),
+                (Icons.person_rounded, s.tabProfile),
+              ],
+              onTap: (i) => setState(() => _idx = i),
+            ),
+          ),
         ],
-        onTap: (i) => setState(() => _idx = i),
       ),
     );
   }
 }
 
-class _TabBar extends StatelessWidget {
+/// Floating Liquid-Glass tab bar (iOS-26 / App Store style): a frosted capsule
+/// detached from the bottom edge; the active tab expands into a gradient pill
+/// showing icon + label, inactive tabs are icon-only.
+class _FloatingNavBar extends StatelessWidget {
   final int index;
-  final List<(IconData, String)> labels;
+  final List<(IconData, String)> items;
   final ValueChanged<int> onTap;
-  const _TabBar({
+  const _FloatingNavBar({
     required this.index,
-    required this.labels,
+    required this.items,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
-    return Container(
-      decoration: BoxDecoration(
-        color: t.surface.withValues(alpha: 0.92),
-        border: Border(top: BorderSide(color: t.divider)),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        10 + MediaQuery.viewPaddingOf(context).bottom,
       ),
-      padding: EdgeInsets.only(
-        top: 6,
-        bottom: 6 + MediaQuery.viewPaddingOf(context).bottom,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(labels.length, (i) {
-          final on = i == index;
-          return GestureDetector(
-            onTap: () => onTap(i),
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    labels[i].$1,
-                    color: on ? t.blue : t.textTer,
-                    size: 22,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    labels[i].$2,
-                    style: TextStyle(
-                      color: on ? t.blue : t.textTer,
-                      fontSize: 10,
-                      fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: t.surface.withValues(alpha: t.dark ? 0.55 : 0.72),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color:
+                    t.dark ? const Color(0x40FFFFFF) : const Color(0x55FFFFFF),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: t.dark ? 0.40 : 0.16),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+                BoxShadow(
+                  color: t.blue.withValues(alpha: t.dark ? 0.20 : 0.12),
+                  blurRadius: 24,
+                  spreadRadius: -6,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(items.length, (i) {
+                final on = i == index;
+                final item = items[i];
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: on ? 16 : 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: on
+                          ? LinearGradient(colors: [t.blue, t.blueDeep])
+                          : null,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: on
+                          ? [
+                              BoxShadow(
+                                color: t.blue.withValues(alpha: 0.45),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          item.$1,
+                          size: 22,
+                          color: on ? Colors.white : t.textTer,
+                        ),
+                        if (on) ...[
+                          const SizedBox(width: 7),
+                          Text(
+                            item.$2,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ),
+                );
+              }),
             ),
-          );
-        }),
+          ),
+        ),
       ),
     );
   }

@@ -72,17 +72,27 @@ class CommunityScreen extends ConsumerWidget {
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (_, __) => const SizedBox.shrink(),
-                  data: (feed) => ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-                    itemCount: feed.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) {
-                      final p = feed[i];
-                      return _PostCard(
-                        post: p,
-                        onTap: () => context.push('/community/${p.id}'),
-                      );
+                  data: (feed) => RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(communityFeedProvider);
+                      await ref.read(communityFeedProvider(tag).future);
                     },
+                    color: t.blue,
+                    backgroundColor: t.surface,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 130),
+                      itemCount: feed.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (_, i) {
+                        final p = feed[i];
+                        return _PostCard(
+                          post: p,
+                          onTap: () => context.push('/community/${p.id}'),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -90,17 +100,20 @@ class CommunityScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: t.blue,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        onPressed: () => context.push('/community/compose'),
-        icon: const Icon(Icons.edit_rounded, size: 18),
-        label: Text(s.compose,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            )),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 78),
+        child: FloatingActionButton.extended(
+          backgroundColor: t.blue,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          onPressed: () => context.push('/community/compose'),
+          icon: const Icon(Icons.edit_rounded, size: 18),
+          label: Text(s.compose,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              )),
+        ),
       ),
     );
   }

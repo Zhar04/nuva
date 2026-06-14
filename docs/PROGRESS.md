@@ -62,11 +62,11 @@ Original 10 points (RU, from the user):
 | Epic | Scope | Status | Savepoint |
 |---|---|---|---|
 | 0 | Baseline + earlier Supabase data-layer integration | ✅ done | `savepoint/epic-0-baseline` |
-| 1 | Liquid Glass UI: mood, cards, pull-refresh, floating navbar | ⬜ not started | — |
+| 1 | Liquid Glass UI: mood, cards, pull-refresh, floating navbar | ✅ done | `savepoint/epic-1` |
 | 2 | Content & wording: rename Чат с ИИ, Покой redesign, chat labels | ⬜ not started | — |
 | 3 | Identity: profile editing, gamification, role onboarding | ⬜ not started | — |
 
 ## Next step
-Start **Epic 1**: read `lib/theme/theme.dart` + `lib/theme/tokens.dart`, write `docs/epics/EPIC_1.md` (3 concepts per design point + tests), implement the recommended picks, test, commit, tag `savepoint/epic-1`, push.
+Start **Epic 2** (see `docs/epics/EPIC_2.md` once written): point 3 rename "Чат с ИИ" → softer name (build my pick from 3 options); point 6 Покой redesign (Endel/Mediatopia style, 3 concepts); point 7 "Психолог" labels in chat. Then test, commit, tag `savepoint/epic-2`, push.
 
-_Last updated: baseline pushed (savepoint/epic-0-baseline). Epics not yet started._
+_Last updated: Epic 1 complete + pushed (savepoint/epic-1). Mood orbs, glassier cards, pull-to-refresh, floating navbar all live & analyze-clean._
