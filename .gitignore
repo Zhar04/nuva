@@ -1,0 +1,51 @@
+# Flutter build artifacts
+nuva_app/.dart_tool/
+nuva_app/.flutter-plugins
+nuva_app/.flutter-plugins-dependencies
+nuva_app/build/
+nuva_app/.pub-cache/
+nuva_app/.pub/
+nuva_app/pubspec.lock
+
+# Secrets — never commit
+nuva_app/.env
+nuva_app/android/key.properties
+nuva_app/android/local.properties
+*.jks
+*.keystore
+
+# Native binaries / generated
+nuva_app/android/.gradle/
+nuva_app/android/.cxx/
+nuva_app/android/app/.cxx/
+nuva_app/ios/Pods/
+nuva_app/ios/.symlinks/
+nuva_app/ios/Flutter/Flutter.framework
+nuva_app/ios/Flutter/Flutter.podspec
+nuva_app/ios/Runner/GeneratedPluginRegistrant.*
+nuva_app/android/**/GeneratedPluginRegistrant.java
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+nuva_app/.idea/
+nuva_app/nuva.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# Python (for icon tool)
+__pycache__/
+*.pyc
+
+# Claude
+.claude/

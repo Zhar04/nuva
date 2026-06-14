@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuva — бизнес-дашборд</title>
+<style>
+  :root{
+    --navy:#0B2E4F; --b600:#185FA5; --primary:#378ADD; --b200:#85B7EB;
+    --b100:#B5D4F4; --b50:#E6F1FB; --mist:#F2F8FE; --teal:#1D9E75;
+    --red:#D8553A; --amber:#C77B0E; --green:#1D9E75;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    background:linear-gradient(160deg,#EAF3FC 0%,#F7FBFF 55%,#FFFFFF 100%);
+    color:var(--navy); min-height:100vh; padding:32px 18px; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:900px; margin:0 auto;}
+  .head{display:flex; align-items:center; gap:13px; margin-bottom:18px;}
+  .mark{width:46px; height:46px; border-radius:14px; background:var(--primary);
+    display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(55,138,221,.28);}
+  .head h1{font-size:22px; font-weight:600; letter-spacing:-.4px; line-height:1.1;}
+  .head p{font-size:13px; color:var(--b600); margin-top:2px;}
+
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:11px; margin-bottom:18px;}
+  @media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:#fff; border-radius:15px; padding:14px; box-shadow:0 10px 26px rgba(11,46,79,.08); border:1px solid #E1EDF9;}
+  .kpi .k{font-size:11px; color:var(--b600);}
+  .kpi .v{font-size:25px; font-weight:600; margin-top:4px; letter-spacing:-.5px;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .tab{font-size:13.5px; font-weight:500; padding:9px 16px; border-radius:11px; cursor:pointer;
+    border:1px solid #DCEAF8; background:#fff; color:var(--b600);}
+  .tab.act{background:var(--primary); color:#fff; border-color:var(--primary);}
+
+  .panel{background:#fff; border-radius:18px; padding:20px; box-shadow:0 14px 38px rgba(11,46,79,.10); border:1px solid #E1EDF9; margin-bottom:16px;}
+  .panel h2{font-size:13px; font-weight:600; color:var(--b600); text-transform:uppercase; letter-spacing:.5px; margin-bottom:16px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr;}}
+  .row{margin-bottom:15px;}
+  .row .lab{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  .row .lab span{font-size:13px; color:var(--navy);}
+  .row .lab b{font-size:14px; font-weight:600; color:var(--b600);}
+  input[type=range]{width:100%; accent-color:var(--primary); height:6px; cursor:pointer;}
+  .tg{display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:11px; background:var(--b50); margin-bottom:9px; cursor:pointer; user-select:none;}
+  .tg span{font-size:12.5px; color:var(--navy); padding-right:10px;}
+  .sw{width:40px; height:23px; border-radius:14px; background:var(--b200); position:relative; flex-shrink:0; transition:background .15s;}
+  .sw::after{content:""; position:absolute; top:3px; left:3px; width:17px; height:17px; border-radius:50%; background:#fff; transition:left .15s;}
+  .tg.on .sw{background:var(--primary);} .tg.on .sw::after{left:20px;}
+
+  .hero{text-align:center; padding:2px 0 13px; border-bottom:1px solid #E1EDF9; margin-bottom:14px;}
+  .hero .k{font-size:12px; color:var(--b600); text-transform:uppercase; letter-spacing:.5px;}
+  .hero .v{font-size:40px; font-weight:600; letter-spacing:-1px; line-height:1.05; margin:3px 0;}
+  .pill{display:inline-block; font-size:12.5px; font-weight:600; padding:5px 14px; border-radius:20px;}
+  .barrow{display:flex; align-items:center; gap:10px; margin-bottom:9px; font-size:12.5px;}
+  .barrow .nm{width:78px; color:var(--b600); flex-shrink:0;}
+  .track{flex:1; height:18px; border-radius:6px; background:var(--mist); overflow:hidden;}
+  .track i{display:block; height:100%; border-radius:6px;}
+  .barrow .val{width:96px; text-align:right; font-weight:600; flex-shrink:0;}
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
+  .card{background:var(--b50); border-radius:13px; padding:12px;}
+  .card .k{font-size:11px; color:var(--b600);} .card .v{font-size:17px; font-weight:600; margin-top:3px;}
+  .break{margin-top:15px; padding-top:13px; border-top:1px solid #E1EDF9; font-size:12.5px;}
+  .break div{display:flex; justify-content:space-between; padding:3px 0; color:var(--b600);}
+  .break div b{color:var(--navy); font-weight:600;}
+  .warn{margin-top:12px; border-radius:11px; padding:10px 12px; font-size:12px; line-height:1.5; display:none;}
+
+  .dash{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px;}
+  @media(max-width:600px){.dash{grid-template-columns:repeat(2,1fr);}}
+  .mc{background:var(--b50); border-radius:12px; padding:12px;}
+  .mc .k{font-size:11px; color:var(--b600);} .mc .v{font-size:20px; font-weight:600; margin-top:3px;}
+  .conf{margin-top:6px; font-size:11.5px; color:var(--b600); background:var(--b50); border-radius:11px; padding:10px 12px; line-height:1.5;}
+  .conf b{color:var(--navy);}
+
+  .ch .lab .nm{display:flex; align-items:center; gap:7px;}
+  .ch .nm .swatch{width:11px; height:11px; border-radius:3px;}
+  .ch .as{font-size:10.5px; color:var(--b200);}
+  .total{margin-top:14px; padding-top:13px; border-top:1px solid #E1EDF9; display:flex; justify-content:space-between; align-items:baseline;}
+  .total span{font-size:13px; color:var(--b600);} .total b{font-size:19px; font-weight:600;}
+  .contrib .cr{display:flex; align-items:center; gap:9px; margin-bottom:8px; font-size:12.5px;}
+  .contrib .cn{width:90px; color:var(--navy); flex-shrink:0;}
+  .contrib .ck{flex:1; height:14px; border-radius:5px; background:var(--mist); overflow:hidden;}
+  .contrib .ck i{display:block; height:100%; border-radius:5px;}
+  .contrib .cv{width:54px; text-align:right; color:var(--b600); font-weight:600; flex-shrink:0;}
+  .maurow{display:flex; align-items:center; gap:12px; margin:4px 0 12px;}
+  .maurow label{font-size:13px; color:var(--navy); white-space:nowrap;}
+  .maurow input{flex:1;} .maurow b{font-size:14px; font-weight:600; color:var(--b600); width:42px; text-align:right;}
+  .bars{display:flex; align-items:flex-end; gap:5px; height:130px; margin:6px 0;}
+  .bars .bcol{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; height:100%;}
+  .bars .bcol i{display:block; width:100%; background:var(--primary); border-radius:4px 4px 0 0; min-height:2px;}
+  .bars .bcol span{font-size:9.5px; color:var(--b200);}
+  .ss{display:flex; gap:18px; font-size:12.5px; color:var(--b600); flex-wrap:wrap;}
+  .ss b{color:var(--navy); font-weight:600;}
+  .note{font-size:12px; color:var(--b600); line-height:1.7; margin-top:8px;}
+  .foot{font-size:12px; color:var(--b600); text-align:center; margin-top:8px; line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 12c1.5-3 3-3 4.5 0s3 3 4.5 0 3-3 4.5 0 3 3 4.5 0"/><path d="M3 17c1.5-3 3-3 4.5 0s3 3 4.5 0 3-3 4.5 0 3 3 4.5 0" opacity=".55"/></svg></div>
+    <div><h1>Nuva — бизнес-дашборд</h1><p>юнит-экономика · B2B ROI · маркетинг и MAU · единая модель</p></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k">LTV / CAC (юнит)</div><div class="v" id="k_ltvcac">—</div></div>
+    <div class="kpi"><div class="k">Платящих / мес</div><div class="v" id="k_paying">—</div></div>
+    <div class="kpi"><div class="k">MAU к 12 мес</div><div class="v" id="k_mau">—</div></div>
+    <div class="kpi"><div class="k">ROI работодателя</div><div class="v" id="k_roi">—</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab act" id="t1" onclick="show('tab-unit',this)">Юнит-экономика</div>
+    <div class="tab" id="t2" onclick="show('tab-b2b',this)">B2B ROI</div>
+    <div class="tab" id="t3" onclick="show('tab-mkt',this)">Маркетинг и MAU</div>
+  </div>
+
+  <!-- TAB 1: UNIT -->
+  <div class="panel tabpanel" id="tab-unit">
+    <h2>Юнит-экономика на платящего клиента</h2>
+    <div class="grid2">
+      <div>
+        <div class="row"><div class="lab"><span>Цена сессии (платит клиент)</span><b id="u_lP">₸12 000</b></div><input type="range" id="u_P" min="6000" max="25000" step="500" value="12000"></div>
+        <div class="row"><div class="lab"><span>Комиссия платформы</span><b id="u_lC">25%</b></div><input type="range" id="u_C" min="15" max="35" step="1" value="25"></div>
+        <div class="row"><div class="lab"><span>Сессий на клиента (удержание)</span><b id="u_lN">6</b></div><input type="range" id="u_N" min="2" max="12" step="1" value="6"></div>
+        <div class="row"><div class="lab"><span>CAC</span><b id="u_lcac">₸3 700</b></div><input type="range" id="u_cac" min="1000" max="10000" step="100" value="3700"></div>
+        <div class="row"><div class="lab"><span>Эквайринг / выплаты</span><b id="u_lA">2,5%</b></div><input type="range" id="u_A" min="0" max="5" step="0.5" value="2.5"></div>
+        <div class="row"><div class="lab"><span>Операционка на клиента</span><b id="u_lO">₸1 500</b></div><input type="range" id="u_O" min="0" max="4000" step="100" value="1500"></div>
+        <div class="tg" id="u_tSub"><span>Субсидировать intro-сессию (+₸2 200 к CAC)</span><div class="sw"></div></div>
+        <div class="tg" id="u_tUrg"><span>Срочный тариф (+40% цена, 30% комиссия)</span><div class="sw"></div></div>
+      </div>
+      <div>
+        <div class="hero"><div class="k">LTV / CAC</div><div class="v" id="u_ratio">—</div><span class="pill" id="u_verdict">—</span></div>
+        <div class="barrow"><span class="nm">LTV</span><div class="track"><i id="u_barL" style="background:var(--primary)"></i></div><span class="val" id="u_vL">—</span></div>
+        <div class="barrow"><span class="nm">CAC</span><div class="track"><i id="u_barC" style="background:var(--b200)"></i></div><span class="val" id="u_vC">—</span></div>
+        <div class="cards">
+          <div class="card"><div class="k">Окупаемость CAC</div><div class="v" id="u_payback">—</div></div>
+          <div class="card"><div class="k">Маржа контрибуции</div><div class="v" id="u_margin">—</div></div>
+        </div>
+        <div class="break">
+          <div><span>Выручка платформы за клиента</span><b id="u_bGross">—</b></div>
+          <div><span>− эквайринг</span><b id="u_bAcq">—</b></div>
+          <div><span>− операционка</span><b id="u_bOpex">—</b></div>
+          <div><span>= LTV (контрибуция)</span><b id="u_bLtv">—</b></div>
+        </div>
+        <div class="warn" id="u_warn" style="background:#FCEFE9; color:var(--red);"></div>
+      </div>
+    </div>
+    <p class="note">Главный рычаг — «сессий на клиента». На 4 сессиях бизнес едва над водой, на 6+ — сильный. LTV отсюда автоматически уходит в маркетинговый LTV/CAC.</p>
+  </div>
+
+  <!-- TAB 2: B2B -->
+  <div class="panel tabpanel" id="tab-b2b" style="display:none;">
+    <h2>HR-дашборд — что видит компания</h2>
+    <div class="dash">
+      <div class="mc"><div class="k">Индекс благополучия</div><div class="v">7,2<span style="font-size:13px;color:var(--b600)"> / 10</span></div></div>
+      <div class="mc"><div class="k">Вовлечённость</div><div class="v">64%</div></div>
+      <div class="mc"><div class="k">Риск выгорания</div><div class="v" style="font-size:17px;color:var(--amber)">средний</div></div>
+      <div class="mc"><div class="k">Обращений / мес</div><div class="v">412</div></div>
+    </div>
+    <div class="conf"><b>Только агрегаты.</b> Имена и переписки сотрудников HR не видит — никогда. Это условие доверия: пользуются → растёт вовлечённость → появляется ROI.</div>
+
+    <h2 style="margin-top:20px;">ROI-калькулятор</h2>
+    <div class="grid2">
+      <div>
+        <div class="row"><div class="lab"><span>Сотрудников</span><b id="b_lEmp">400</b></div><input type="range" id="b_emp" min="30" max="5000" step="10" value="400"></div>
+        <div class="row"><div class="lab"><span>PEPM (₸ / сотр / мес)</span><b id="b_lPepm">₸1 200</b></div><input type="range" id="b_pepm" min="500" max="2500" step="50" value="1200"></div>
+        <div class="row"><div class="lab"><span>Вовлечённость</span><b id="b_lAd">20%</b></div><input type="range" id="b_adopt" min="5" max="40" step="1" value="20"></div>
+        <div class="row"><div class="lab"><span>Средняя зарплата (₸ / мес)</span><b id="b_lSal">₸450 000</b></div><input type="range" id="b_salary" min="200000" max="1500000" step="50000" value="450000"></div>
+        <div class="row"><div class="lab"><span>Меньше дней болезни / год (на активного)</span><b id="b_lSick">2,5</b></div><input type="range" id="b_sick" min="0" max="6" step="0.5" value="2.5"></div>
+        <div class="row"><div class="lab"><span>Предотвращ. увольнений на 100 активных</span><b id="b_lQ">3</b></div><input type="range" id="b_quits" min="0" max="10" step="1" value="3"></div>
+      </div>
+      <div>
+        <div class="hero"><div class="k">ROI для работодателя</div><div class="v" id="b_roi">—</div><span class="pill" id="b_verdict">—</span></div>
+        <div class="barrow"><span class="nm">Экономия/год</span><div class="track"><i id="b_barS" style="background:var(--teal)"></i></div><span class="val" id="b_vS">—</span></div>
+        <div class="barrow"><span class="nm">Контракт/год</span><div class="track"><i id="b_barC" style="background:var(--b200)"></i></div><span class="val" id="b_vC">—</span></div>
+        <div class="cards">
+          <div class="card"><div class="k">Окупаемость контракта</div><div class="v" id="b_payback">—</div></div>
+          <div class="card"><div class="k">Активных сотрудников</div><div class="v" id="b_active">—</div></div>
+        </div>
+        <div class="break">
+          <div class="be" style="font-weight:600;color:var(--navy);font-size:13.5px;display:block;" id="b_be">—</div>
+          <div id="b_platContrib" style="color:var(--b600);margin-top:4px;display:block;">—</div>
+        </div>
+        <div class="warn" id="b_warn" style="background:#FBF1DD; color:var(--amber);"></div>
+      </div>
+    </div>
+    <p class="note">Модель консервативная — учтены только меньше больничных и удержание (без продуктивности/презентеизма, которые подняли бы ROI). ROI почти не зависит от размера компании — его двигает вовлечённость. А для платформы размер критичен.</p>
+  </div>
+
+  <!-- TAB 3: MARKETING -->
+  <div class="panel tabpanel" id="tab-mkt" style="display:none;">
+    <h2>Бюджет по каналам (₸ / месяц)</h2>
+    <div class="grid2" id="m_channels"></div>
+    <div class="total"><span>Суммарный бюджет / мес</span><b id="m_totBudget">—</b></div>
+
+    <h2 style="margin-top:20px;">Результат за месяц</h2>
+    <div class="grid2">
+      <div>
+        <div class="hero"><div class="k">Сводный CAC (на платящего)</div><div class="v" id="m_cac">—</div><span class="pill" id="m_verdict">—</span></div>
+        <div class="cards">
+          <div class="card"><div class="k">Регистраций / мес</div><div class="v" id="m_regs">—</div></div>
+          <div class="card"><div class="k">Платящих / мес</div><div class="v" id="m_pay">—</div></div>
+          <div class="card"><div class="k">Цена регистрации</div><div class="v" id="m_cpr">—</div></div>
+          <div class="card"><div class="k">LTV / CAC</div><div class="v" id="m_ratio">—</div></div>
+        </div>
+      </div>
+      <div class="contrib" id="m_contrib"></div>
+    </div>
+
+    <h2 style="margin-top:20px;">Прогноз MAU за 12 месяцев</h2>
+    <div class="maurow"><label>Месячное удержание</label><input type="range" id="m_ret" min="20" max="70" step="5" value="40"><b id="m_lret">40%</b></div>
+    <div class="bars" id="m_bars"></div>
+    <div class="ss"><div>MAU к 12-му мес: <b id="m_mau12">—</b></div><div>Выход на плато: <b id="m_mauss">—</b></div></div>
+    <p class="note">LTV/CAC здесь использует LTV из вкладки «Юнит-экономика» — поменяйте удержание там и вернитесь сюда. Удержание комьюнити — главный множитель MAU.</p>
+  </div>
+
+  <p class="foot">Автономный файл без внешних зависимостей — открывается в любом браузере, включая Brave. Валюта — тенге (модель запускного рынка). Все цифры — оценки уровня founder/pre-seed.</p>
+
+</div>
+
+<script>
+  var fmt=function(n){return "₸"+Math.round(n).toLocaleString("ru-RU");};
+  var num=function(n){return Math.round(n).toLocaleString("ru-RU");};
+  var v=function(id){return +document.getElementById(id).value;};
+  var T=function(id,t){document.getElementById(id).textContent=t;};
+  function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue("--"+n).trim();}
+  var uSub=false, uUrg=false;
+
+  var CH=[
+    {id:"tt", n:"TikTok",      cpr:250, conv:0.06, b:800000, c:"#185FA5"},
+    {id:"ig", n:"Instagram",   cpr:350, conv:0.08, b:500000, c:"#2E78C7"},
+    {id:"tg", n:"Telegram",    cpr:200, conv:0.07, b:300000, c:"#5BA0E0"},
+    {id:"kp", n:"Kaspi",       cpr:150, conv:0.09, b:600000, c:"#378ADD"},
+    {id:"in", n:"Инфлюенсеры", cpr:300, conv:0.10, b:500000, c:"#2FA98C"},
+    {id:"se", n:"ASO / SEO",   cpr:120, conv:0.09, b:300000, c:"#6FC2A8"}
+  ];
+  var host=document.getElementById("m_channels");
+  CH.forEach(function(ch){
+    var d=document.createElement("div"); d.className="ch row";
+    d.innerHTML='<div class="lab"><span class="nm"><span class="swatch" style="background:'+ch.c+'"></span>'+ch.n+' <span class="as">CPR '+fmt(ch.cpr)+' · '+Math.round(ch.conv*100)+'%</span></span><b id="mc_l'+ch.id+'">'+fmt(ch.b)+'</b></div>'+
+      '<input type="range" id="mc_'+ch.id+'" min="0" max="3000000" step="50000" value="'+ch.b+'">';
+    host.appendChild(d);
+  });
+
+  function show(id,btn){
+    var ps=document.querySelectorAll(".tabpanel"); for(var i=0;i<ps.length;i++) ps[i].style.display="none";
+    document.getElementById(id).style.display="";
+    var ts=document.querySelectorAll(".tab"); for(var j=0;j<ts.length;j++) ts[j].classList.remove("act");
+    btn.classList.add("act");
+  }
+
+  function colorize(ratio){
+    if(ratio<1) return {c:cssv("red"), bg:"#FCEFE9", t:"дорого"};
+    if(ratio<3) return {c:cssv("amber"), bg:"#FBF1DD", t:"на грани"};
+    if(ratio<5) return {c:cssv("green"), bg:"#E3F5EE", t:"здорово"};
+    return {c:cssv("primary"), bg:"#E6F1FB", t:"отлично"};
+  }
+
+  function calc(){
+    /* ---- UNIT ---- */
+    var P=v("u_P"), c=v("u_C")/100, n=v("u_N"), cac=v("u_cac"), a=v("u_A")/100, O=v("u_O");
+    var effP=P, effC=c;
+    if(uUrg){ effP=Math.round(P*1.4); effC=Math.max(c,0.30); }
+    var ecac=cac+(uSub?2200:0);
+    var grossSes=effP*effC, acqSes=effP*a, contribSes=grossSes-acqSes;
+    var gross=grossSes*n, acq=acqSes*n;
+    var ltv=contribSes*n-O;
+    var uratio=ecac>0? ltv/ecac:0;
+    var paySes=contribSes>0? Math.ceil(ecac/contribSes):Infinity;
+    var umargin=gross>0? ltv/gross*100:0;
+
+    T("u_lP", fmt(P)+(uUrg?" → "+fmt(effP):""));
+    T("u_lC", v("u_C")+"%"+(uUrg?" → 30%":""));
+    T("u_lN", n); T("u_lcac", fmt(cac));
+    T("u_lA", v("u_A").toString().replace(".",",")+"%"); T("u_lO", fmt(O));
+    T("u_ratio", uratio.toFixed(1).replace(".",",")+"×");
+    T("u_vL", fmt(ltv)); T("u_vC", fmt(ecac));
+    T("u_margin", Math.round(umargin)+"%");
+    T("u_bGross", fmt(gross)); T("u_bAcq", "−"+fmt(acq)); T("u_bOpex", "−"+fmt(O)); T("u_bLtv", fmt(ltv));
+    var uv=colorize(uratio); var ue=document.getElementById("u_verdict");
+    ue.textContent=uv.t; ue.style.color=uv.c; ue.style.background=uv.bg;
+    document.getElementById("u_ratio").style.color=uv.c;
+    document.getElementById("u_barL").style.background=uv.c;
+    var umx=Math.max(ltv,ecac,1);
+    document.getElementById("u_barL").style.width=Math.max(2,ltv/umx*100)+"%";
+    document.getElementById("u_barC").style.width=Math.max(2,ecac/umx*100)+"%";
+    var uw=document.getElementById("u_warn");
+    if(paySes===Infinity||paySes>n){ uw.style.display="block"; uw.textContent="Не окупается за «жизнь» клиента ("+n+" сессий). Поднимайте удержание/комиссию или снижайте CAC."; T("u_payback","не окупается"); }
+    else { uw.style.display="none"; T("u_payback", paySes+"-я сессия"); }
+
+    /* ---- B2B ---- */
+    var emp=v("b_emp"), pepm=v("b_pepm"), ad=v("b_adopt")/100, sal=v("b_salary"), sick=v("b_sick"), q=v("b_quits");
+    var active=Math.round(emp*ad), daily=sal/22;
+    var absS=active*sick*daily, prevQ=active/100*q, turnS=prevQ*(sal*3), savings=absS+turnS;
+    var bcost=emp*pepm*12;
+    var broi=bcost>0?(savings/bcost-1)*100:0;
+    var payM=savings>0? bcost/(savings/12):Infinity;
+    var platPerEmp=pepm*12*0.6, be=Math.ceil(1200000/platPerEmp), platContrib=emp*platPerEmp-1200000;
+
+    T("b_lEmp", num(emp)); T("b_lPepm", fmt(pepm)); T("b_lAd", v("b_adopt")+"%");
+    T("b_lSal", fmt(sal)); T("b_lSick", v("b_sick").toString().replace(".",",")); T("b_lQ", q);
+    T("b_roi", (broi>=0?"+":"")+Math.round(broi)+"%");
+    T("b_vS", fmt(savings)); T("b_vC", fmt(bcost)); T("b_active", num(active));
+    T("b_payback", payM===Infinity?"—":(Math.ceil(payM)+" мес"));
+    var bv, be_v=document.getElementById("b_verdict");
+    if(broi<0) bv={c:cssv("red"),bg:"#FCEFE9",t:"убыточно для HR"};
+    else if(broi<50) bv={c:cssv("amber"),bg:"#FBF1DD",t:"окупается"};
+    else if(broi<200) bv={c:cssv("green"),bg:"#E3F5EE",t:"хороший ROI"};
+    else bv={c:cssv("primary"),bg:"#E6F1FB",t:"сильный ROI"};
+    be_v.textContent=bv.t; be_v.style.color=bv.c; be_v.style.background=bv.bg;
+    document.getElementById("b_roi").style.color=bv.c;
+    var bmx=Math.max(savings,bcost,1);
+    document.getElementById("b_barS").style.width=Math.max(2,savings/bmx*100)+"%";
+    document.getElementById("b_barC").style.width=Math.max(2,bcost/bmx*100)+"%";
+    T("b_be", "Для платформы прибылен от ~"+num(be)+" сотрудников");
+    var pc=document.getElementById("b_platContrib");
+    pc.textContent="Контрибуция платформы/год: "+(platContrib>=0?"+":"−")+fmt(Math.abs(platContrib));
+    pc.style.color=platContrib>=0?"var(--teal)":"var(--red)";
+    var bw=document.getElementById("b_warn");
+    if(emp<be){ bw.style.display="block"; bw.textContent="При "+emp+" сотрудниках контракт не покрывает стоимость продажи/сопровождения. Поднимите PEPM, продавайте крупнее или ведите через self-serve без аккаунт-менеджера."; }
+    else bw.style.display="none";
+
+    /* ---- MARKETING (uses ltv) ---- */
+    var totB=0, totR=0, totP=0, maxP=0, rows=[];
+    CH.forEach(function(ch){
+      var b=v("mc_"+ch.id); T("mc_l"+ch.id, fmt(b));
+      var r=ch.cpr>0? b/ch.cpr:0, p=r*ch.conv;
+      totB+=b; totR+=r; totP+=p; maxP=Math.max(maxP,p);
+      rows.push({n:ch.n,c:ch.c,p:p});
+    });
+    var mcac=totP>0? totB/totP:0, mcpr=totR>0? totB/totR:0, mratio=mcac>0? ltv/mcac:0;
+    T("m_totBudget", fmt(totB));
+    T("m_cac", totP>0?fmt(mcac):"—"); T("m_regs", num(totR)); T("m_pay", num(totP));
+    T("m_cpr", totR>0?fmt(mcpr):"—"); T("m_ratio", mratio>0?mratio.toFixed(1).replace(".",",")+"×":"—");
+    var mv=colorize(mratio), mvel=document.getElementById("m_verdict");
+    mvel.textContent=mv.t; mvel.style.color=mv.c; mvel.style.background=mv.bg;
+    document.getElementById("m_cac").style.color=mv.c;
+    var ct=document.getElementById("m_contrib"); ct.innerHTML="";
+    rows.forEach(function(r){
+      var w=maxP>0?Math.max(2,r.p/maxP*100):2;
+      var el=document.createElement("div"); el.className="cr";
+      el.innerHTML='<span class="cn">'+r.n+'</span><span class="ck"><i style="width:'+w+'%;background:'+r.c+'"></i></span><span class="cv">'+num(r.p)+'</span>';
+      ct.appendChild(el);
+    });
+    var ret=v("m_ret")/100; T("m_lret", Math.round(ret*100)+"%");
+    var mau=0, series=[];
+    for(var i=0;i<12;i++){ mau=mau*ret+totR; series.push(mau); }
+    var ss=ret<1? totR/(1-ret):0;
+    var mmx=Math.max.apply(null,series.concat([1]));
+    var bars=document.getElementById("m_bars"); bars.innerHTML="";
+    series.forEach(function(m,i){
+      var col=document.createElement("div"); col.className="bcol";
+      col.innerHTML='<i style="height:'+Math.max(2,m/mmx*100)+'%"></i><span>'+(i+1)+'</span>';
+      bars.appendChild(col);
+    });
+    T("m_mau12", num(series[11])); T("m_mauss", "~"+num(ss));
+
+    /* ---- KPI HEADER ---- */
+    T("k_ltvcac", uratio.toFixed(1).replace(".",",")+"×");
+    document.getElementById("k_ltvcac").style.color=uv.c;
+    T("k_paying", num(totP));
+    T("k_mau", num(series[11]));
+    T("k_roi", (broi>=0?"+":"")+Math.round(broi)+"%");
+    document.getElementById("k_roi").style.color=bv.c;
+  }
+
+  ["u_P","u_C","u_N","u_cac","u_A","u_O","b_emp","b_pepm","b_adopt","b_salary","b_sick","b_quits","m_ret"]
+    .forEach(function(id){ document.getElementById(id).addEventListener("input",calc); });
+  CH.forEach(function(ch){ document.getElementById("mc_"+ch.id).addEventListener("input",calc); });
+  document.getElementById("u_tSub").addEventListener("click",function(){ uSub=!uSub; this.classList.toggle("on"); calc(); });
+  document.getElementById("u_tUrg").addEventListener("click",function(){ uUrg=!uUrg; this.classList.toggle("on"); calc(); });
+  calc();
+</script>
+</body>
+</html>

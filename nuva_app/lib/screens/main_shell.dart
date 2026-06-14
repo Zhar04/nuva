@@ -1,0 +1,282 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../l10n/strings.dart';
+import '../theme/theme.dart';
+import 'community_screen.dart';
+import 'home_screen.dart';
+import 'profile_screen.dart';
+import 'specialists_screen.dart';
+
+class MainShell extends ConsumerStatefulWidget {
+  final int initialTab;
+  const MainShell({super.key, this.initialTab = 0});
+
+  @override
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
+  late int _idx = widget.initialTab;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(ref);
+    final t = context.nuva;
+
+    final pages = const [
+      HomeScreen(),
+      SpecialistsScreen(showBack: false),
+      CommunityScreen(),
+      _CalmScreen(),
+      ProfileScreen(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _idx, children: pages),
+      bottomNavigationBar: _TabBar(
+        index: _idx,
+        labels: [
+          (Icons.home_rounded, s.tabHome),
+          (Icons.search_rounded, s.tabSpecialists),
+          (Icons.forum_rounded, s.tabCommunity),
+          (Icons.spa_rounded, s.tabCalm),
+          (Icons.person_rounded, s.tabProfile),
+        ],
+        onTap: (i) => setState(() => _idx = i),
+      ),
+    );
+  }
+}
+
+class _TabBar extends StatelessWidget {
+  final int index;
+  final List<(IconData, String)> labels;
+  final ValueChanged<int> onTap;
+  const _TabBar({
+    required this.index,
+    required this.labels,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return Container(
+      decoration: BoxDecoration(
+        color: t.surface.withValues(alpha: 0.92),
+        border: Border(top: BorderSide(color: t.divider)),
+      ),
+      padding: EdgeInsets.only(
+        top: 6,
+        bottom: 6 + MediaQuery.viewPaddingOf(context).bottom,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(labels.length, (i) {
+          final on = i == index;
+          return GestureDetector(
+            onTap: () => onTap(i),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    labels[i].$1,
+                    color: on ? t.blue : t.textTer,
+                    size: 22,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    labels[i].$2,
+                    style: TextStyle(
+                      color: on ? t.blue : t.textTer,
+                      fontSize: 10,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _CalmScreen extends ConsumerWidget {
+  const _CalmScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(ref);
+    final t = context.nuva;
+    final items = [
+      ('Дыхание 4-7-8', '5 мин · тревога', Icons.air_rounded, t.teal),
+      ('Дождь в лесу', '30 мин · сон', Icons.cloud_rounded, t.blue),
+      ('Сканирование тела', '12 мин · напряжение', Icons.self_improvement_rounded,
+          const Color(0xFFB39DDB)),
+      ('Утренняя практика', '8 мин · фокус', Icons.wb_sunny_rounded,
+          const Color(0xFFF5C26B)),
+      ('Заземление 5-4-3-2-1', '4 мин · паника', Icons.spa_rounded,
+          const Color(0xFFFF9E80)),
+    ];
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: t.backdrop),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(s.tabCalm,
+                      style: TextStyle(
+                        color: t.text,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.4,
+                      )),
+                  const SizedBox(height: 2),
+                  Text('Короткие практики, чтобы выдохнуть',
+                      style: TextStyle(color: t.textSec, fontSize: 13)),
+                  const SizedBox(height: 18),
+                  Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [t.blue, t.teal],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: t.blue.withValues(alpha: 0.35),
+                          blurRadius: 32,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('РЕКОМЕНДОВАНО',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              )),
+                        ),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Когда тревога нарастает',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -0.4,
+                                  height: 1.2,
+                                )),
+                            SizedBox(height: 4),
+                            Text('5 минут · дыхание 4-7-8',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                )),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(Icons.play_arrow_rounded,
+                                  color: t.blue, size: 26),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  ...items.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: t.glassBgUp,
+                          border: Border.all(color: t.glassBorder),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: item.$4.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(item.$3, color: item.$4, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.$1,
+                                      style: TextStyle(
+                                        color: t.text,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w600,
+                                      )),
+                                  Text(item.$2,
+                                      style: TextStyle(
+                                        color: t.textSec,
+                                        fontSize: 12,
+                                      )),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.play_circle_outline_rounded,
+                                color: t.textSec, size: 24),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

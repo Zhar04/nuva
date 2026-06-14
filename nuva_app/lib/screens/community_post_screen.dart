@@ -1,0 +1,345 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../l10n/strings.dart';
+import '../models/community.dart';
+import '../theme/theme.dart';
+import '../widgets/avatar.dart';
+import '../widgets/glass.dart';
+
+class CommunityPostScreen extends ConsumerStatefulWidget {
+  final String postId;
+  const CommunityPostScreen({super.key, required this.postId});
+
+  @override
+  ConsumerState<CommunityPostScreen> createState() => _State();
+}
+
+class _State extends ConsumerState<CommunityPostScreen> {
+  final _input = TextEditingController();
+  late List<CommunityReply> _replies;
+
+  @override
+  void initState() {
+    super.initState();
+    _replies = List.of(communitySampleReplies);
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    final text = _input.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _replies.insert(
+        0,
+        CommunityReply(
+          id: 'r${_replies.length + 1}',
+          author: const CommunityAuthor(
+            alias: 'Вы',
+            gradient: [Color(0xFF7FE0D4), Color(0xFFB0EDE5)],
+          ),
+          text: text,
+          timeLabel: 'только что',
+          likes: 0,
+        ),
+      );
+      _input.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(ref);
+    final t = context.nuva;
+    final post = communityFeed.firstWhere((p) => p.id == widget.postId);
+
+    return Scaffold(
+      body: GlassBackdrop(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 20, 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: t.text, size: 18),
+                    ),
+                    Text(s.communityTitle,
+                        style: TextStyle(
+                          color: t.text,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        )),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                  children: [
+                    _PostHero(post: post),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Text(
+                          '${_replies.length} ${s.lang == AppLang.en ? "replies" : "ответов"}',
+                          style: TextStyle(
+                            color: t.textSec,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ..._replies.map((r) => _ReplyCard(reply: r)),
+                  ],
+                ),
+              ),
+              _Composer(controller: _input, hint: s.replyHint, onSend: _send),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PostHero extends StatelessWidget {
+  final CommunityPost post;
+  const _PostHero({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return GlassCard(
+      elevated: true,
+      radius: 22,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              GradientAvatar(
+                initials: 'А',
+                gradient: post.author.gradient,
+                size: 44,
+                radius: 999,
+                fontSize: 16,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(post.author.alias,
+                        style: TextStyle(
+                          color: t.text,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                        )),
+                    Text(post.timeLabel,
+                        style: TextStyle(color: t.textTer, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(post.text,
+              style: TextStyle(
+                color: t.text,
+                fontSize: 15,
+                height: 1.55,
+              )),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: post.tags.map((x) => Tag(label: '# $x')).toList(),
+          ),
+          const SizedBox(height: 12),
+          Container(height: 1, color: t.divider),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.favorite_rounded, color: t.danger, size: 16),
+              const SizedBox(width: 6),
+              Text('${post.likes}',
+                  style: TextStyle(
+                    color: t.textSec,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  )),
+              const SizedBox(width: 16),
+              Icon(Icons.chat_bubble_outline_rounded,
+                  color: t.textSec, size: 15),
+              const SizedBox(width: 6),
+              Text('${post.replies}',
+                  style: TextStyle(
+                    color: t.textSec,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReplyCard extends ConsumerWidget {
+  final CommunityReply reply;
+  const _ReplyCard({required this.reply});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(ref);
+    final t = context.nuva;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassCard(
+        radius: 16,
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                GradientAvatar(
+                  initials: reply.author.alias.characters.first,
+                  gradient: reply.author.gradient,
+                  size: 30,
+                  radius: 999,
+                  fontSize: 12,
+                ),
+                const SizedBox(width: 8),
+                Text(reply.author.alias,
+                    style: TextStyle(
+                      color: t.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    )),
+                if (reply.fromSpecialist) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: t.blue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(s.fromSpecialist,
+                        style: TextStyle(
+                          color: t.blue,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                        )),
+                  ),
+                ],
+                const Spacer(),
+                Text(reply.timeLabel,
+                    style: TextStyle(color: t.textTer, fontSize: 11)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(reply.text,
+                style: TextStyle(color: t.text, fontSize: 13.5, height: 1.45)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.favorite_outline_rounded,
+                    color: t.textSec, size: 14),
+                const SizedBox(width: 4),
+                Text('${reply.likes}',
+                    style: TextStyle(color: t.textSec, fontSize: 12)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final VoidCallback onSend;
+  const _Composer({
+    required this.controller,
+    required this.hint,
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return Container(
+      decoration: BoxDecoration(
+        color: t.surface.withValues(alpha: 0.9),
+        border: Border(top: BorderSide(color: t.divider)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        10,
+        12,
+        10 + MediaQuery.viewPaddingOf(context).bottom,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              minLines: 1,
+              maxLines: 4,
+              style: TextStyle(color: t.text, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(color: t.textTer, fontSize: 13),
+                filled: true,
+                fillColor: t.glassBgUp,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide(color: t.glassBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide(color: t.blue, width: 1.4),
+                ),
+              ),
+              onSubmitted: (_) => onSend(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Material(
+            color: t.blue,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onSend,
+              child: const SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(Icons.arrow_upward_rounded,
+                    color: Colors.white, size: 20),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
