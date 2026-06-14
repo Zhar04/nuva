@@ -11,8 +11,14 @@ import '../screens/intake_screen.dart';
 import '../screens/legal_screens.dart';
 import '../screens/main_shell.dart';
 import '../screens/onboarding_screen.dart';
+import '../screens/onboarding_specialist_screen.dart';
+import '../screens/onboarding_user_screen.dart';
 import '../screens/payment_screen.dart';
 import '../screens/payment_success_screen.dart';
+import '../screens/profile_edit_screen.dart';
+import '../screens/profile_subscreens.dart';
+import '../screens/progress_screen.dart';
+import '../screens/role_select_screen.dart';
 import '../screens/specialists_screen.dart';
 import '../screens/video_call_screen.dart';
 
@@ -25,6 +31,29 @@ Future<GoRouter> buildRouter() async {
     routes: [
       GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
       GoRoute(path: '/auth', builder: (_, __) => const AuthScreen()),
+
+      // Registration + onboarding pipelines (Epic 3)
+      GoRoute(path: '/role', builder: (_, __) => const RoleSelectScreen()),
+      GoRoute(
+          path: '/onboarding/user',
+          builder: (_, __) => const OnboardingUserScreen()),
+      GoRoute(
+          path: '/onboarding/specialist',
+          builder: (_, __) => const OnboardingSpecialistScreen()),
+
+      // Profile sub-screens + progress (Epic 3)
+      GoRoute(
+          path: '/profile/edit',
+          builder: (_, __) => const ProfileEditScreen()),
+      GoRoute(path: '/sessions', builder: (_, __) => const SessionsScreen()),
+      GoRoute(path: '/journal', builder: (_, __) => const JournalScreen()),
+      GoRoute(
+          path: '/favorites', builder: (_, __) => const FavoritesScreen()),
+      GoRoute(
+          path: '/notifications',
+          builder: (_, __) => const NotificationsScreen()),
+      GoRoute(path: '/help', builder: (_, __) => const HelpScreen()),
+      GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
 
       // Shell tabs (IndexedStack inside).
       GoRoute(path: '/home', builder: (_, __) => const MainShell(initialTab: 0)),

@@ -64,13 +64,11 @@ Original 10 points (RU, from the user):
 | 0 | Baseline + earlier Supabase data-layer integration | ✅ done | `savepoint/epic-0-baseline` |
 | 1 | Liquid Glass UI: mood, cards, pull-refresh, floating navbar | ✅ done | `savepoint/epic-1` |
 | 2 | Content & wording: rename Чат с ИИ, Покой redesign, chat labels | ✅ done | `savepoint/epic-2` |
-| 3 | Identity: profile editing, gamification, role onboarding | ⬜ not started | — |
+| 3 | Identity: profile editing, gamification, role onboarding | ✅ done | `savepoint/epic-3` |
 
 ## Next step
-Start **Epic 3** (see `docs/epics/EPIC_3.md` to be written) — UI/flow prototype, local state, diploma upload stubbed, new Supabase tables documented (not built):
-- Point 8: make profile menu items open (Мои сессии, Дневник настроения, Избранные, Уведомления, Помощь, account settings); profile editing (avatar photo, name, bio, MBTI).
-- Point 9: gamification — points (monthly reset) + psychologist-awarded achievements + course progress bar (Strava-like share).
-- Point 10: role-based registration (User / Psychologist) + onboarding pipelines (data, document upload, MBTI, 4–5 calm intro questions → AI module with skip; psychologists skip AI, require docs/expertise/photo).
-Then test, commit, tag `savepoint/epic-3`, push.
+**All 3 epics complete.** ✅ The scheduled `nuva-epic-resume` routine can now be deleted (https://claude.ai/code/routines) — when it next fires it will see all epics done and no-op.
 
-_Last updated: Epic 2 complete + pushed (savepoint/epic-2). Rename "Чат с ИИ"→"Помощь в подборе" (no "ИИ" left), Покой redesign (scenes + categories), chat "Психолог" badge. analyze-clean._
+Possible follow-ups (not requested tonight): wire the documented Supabase tables/Storage for real diploma uploads + role data; trilingualize the new Epic 3 screens (currently RU); the user will pick final design variants from the 3 concepts per design point (in each EPIC_*.md) and I swap if needed.
+
+_Last updated: Epic 3 complete + pushed (savepoint/epic-3). Role-based registration + user/psychologist onboarding steppers, working profile + editor (persisted), gamification card + progress screen. analyze-clean, web serves 200. All epics done._

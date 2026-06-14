@@ -6,10 +6,12 @@ import 'package:intl/intl.dart';
 import '../l10n/strings.dart';
 import '../models/chat.dart';
 import '../models/specialist.dart';
+import '../models/user_profile.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
+import 'progress_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -26,7 +28,9 @@ class ProfileScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
             children: [
-              _Header(s: s),
+              const _Header(),
+              const SizedBox(height: 18),
+              const GamificationCard(),
               const SizedBox(height: 18),
               _UpcomingSession(s: s),
               const SizedBox(height: 22),
@@ -42,23 +46,28 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.event_rounded,
                   label: s.mySessions,
                   trailing: '3',
-                  onTap: () {},
+                  onTap: () => context.push('/sessions'),
                 ),
                 _MenuItem(
                   icon: Icons.book_outlined,
                   label: s.myJournal,
-                  onTap: () {},
+                  onTap: () => context.push('/journal'),
                 ),
                 _MenuItem(
                   icon: Icons.favorite_outline_rounded,
                   label: 'Избранные специалисты',
                   trailing: '2',
-                  onTap: () {},
+                  onTap: () => context.push('/favorites'),
                 ),
               ]),
               const SizedBox(height: 22),
               SectionLabel(label: 'Настройки'),
               _Menu(items: [
+                _MenuItem(
+                  icon: Icons.edit_outlined,
+                  label: 'Редактировать профиль',
+                  onTap: () => context.push('/profile/edit'),
+                ),
                 _MenuItem(
                   icon: Icons.account_circle_outlined,
                   label: s.signIn,
@@ -77,7 +86,7 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.notifications_none_rounded,
                   label: s.notifications,
-                  onTap: () {},
+                  onTap: () => context.push('/notifications'),
                 ),
                 _MenuItem(
                   icon: Icons.lock_outline_rounded,
@@ -97,7 +106,7 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.help_outline_rounded,
                   label: s.helpSupport,
-                  onTap: () {},
+                  onTap: () => context.push('/help'),
                 ),
               ]),
               const SizedBox(height: 22),
@@ -128,18 +137,23 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  final S s;
-  const _Header({required this.s});
+class _Header extends ConsumerWidget {
+  const _Header();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.nuva;
-    return Row(
+    final p = ref.watch(userProfileProvider);
+    final isPsy = p.role == UserRole.psychologist;
+    final name = p.name.trim().isEmpty ? 'Аноним' : p.name;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.push('/profile/edit'),
+      child: Row(
       children: [
-        const GradientAvatar(
-          initials: 'А',
-          gradient: [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
+        GradientAvatar(
+          initials: p.initials,
+          gradient: const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
           size: 64,
           radius: 20,
           fontSize: 26,
@@ -151,29 +165,37 @@ class _Header extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('Анонимный',
-                      style: TextStyle(
-                        color: t.text,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.3,
-                      )),
+                  Flexible(
+                    child: Text(name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: t.text,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
+                        )),
+                  ),
                   const SizedBox(width: 6),
-                  Icon(Icons.lock_outline_rounded,
-                      color: t.textTer, size: 16),
+                  Icon(
+                      isPsy
+                          ? Icons.verified_rounded
+                          : Icons.lock_outline_rounded,
+                      color: isPsy ? t.blue : t.textTer,
+                      size: 16),
                 ],
               ),
               const SizedBox(height: 2),
-              Text('Профиль защищён · KZ',
+              Text(isPsy ? 'Психолог · профиль' : 'Профиль защищён · KZ',
                   style: TextStyle(color: t.textSec, fontSize: 13)),
             ],
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: () => context.push('/profile/edit'),
           icon: Icon(Icons.settings_outlined, color: t.text, size: 22),
         ),
       ],
+      ),
     );
   }
 }
