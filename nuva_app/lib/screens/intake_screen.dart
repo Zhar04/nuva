@@ -3,11 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/strings.dart';
-import '../services/claude_service.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 
-final _claudeProvider = Provider((_) => ClaudeService());
+/// One line of the intake conversation.
+class _Turn {
+  final String role; // 'user' | 'assistant'
+  final String content;
+  final bool crisis;
+  const _Turn(this.role, this.content, {this.crisis = false});
+}
 
 class IntakeScreen extends ConsumerStatefulWidget {
   const IntakeScreen({super.key});
@@ -19,7 +26,7 @@ class IntakeScreen extends ConsumerStatefulWidget {
 class _IntakeScreenState extends ConsumerState<IntakeScreen> {
   final _scroll = ScrollController();
   final _input = TextEditingController();
-  final List<ChatTurn> _turns = [];
+  final List<_Turn> _turns = [];
   bool _sending = false;
   String? _error;
 
@@ -30,7 +37,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final s = S.of(ref);
       setState(() {
-        _turns.add(ChatTurn('assistant', s.intakeFirstMessage));
+        _turns.add(_Turn('assistant', s.intakeFirstMessage));
       });
     });
   }
@@ -58,9 +65,8 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
       _skip();
       return;
     }
-    final lang = ref.read(langProvider);
     setState(() {
-      _turns.add(ChatTurn('user', text));
+      _turns.add(_Turn('user', text));
       _input.clear();
       _sending = true;
       _error = null;
@@ -68,19 +74,25 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
     _scrollToEnd();
 
     try {
-      final reply = await ref.read(_claudeProvider).reply(
-            history: _turns,
-            userLanguage: lang.locale.languageCode,
-          );
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      final res = await ref.read(apiClientProvider).post(
+        'ai/ask/',
+        {'message': text},
+        token: token,
+      );
       setState(() {
-        _turns.add(ChatTurn('assistant', reply));
+        _turns.add(_Turn(
+          'assistant',
+          (res['reply'] ?? '') as String,
+          crisis: (res['crisis'] as bool?) ?? false,
+        ));
         _sending = false;
       });
       _scrollToEnd();
     } catch (e) {
       setState(() {
         _sending = false;
-        _error = S.of(ref).aiError;
+        _error = e is ApiException ? e.message : S.of(ref).aiError;
       });
     }
   }
@@ -217,13 +229,19 @@ class _IntakeHeader extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  final ChatTurn turn;
+  final _Turn turn;
   const _Bubble({required this.turn});
 
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
     final isUser = turn.role == 'user';
+    final crisis = turn.crisis;
+    final bg = isUser
+        ? t.blue
+        : (crisis ? t.danger.withValues(alpha: 0.10) : t.glassBgUp);
+    final border = crisis ? t.danger.withValues(alpha: 0.5) : t.glassBorder;
+    final fg = isUser ? Colors.white : (crisis ? t.danger : t.text);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -241,10 +259,8 @@ class _Bubble extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? t.blue : t.glassBgUp,
-                border: isUser
-                    ? null
-                    : Border.all(color: t.glassBorder, width: 1),
+                color: bg,
+                border: isUser ? null : Border.all(color: border, width: 1),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -252,13 +268,32 @@ class _Bubble extends StatelessWidget {
                   bottomRight: Radius.circular(isUser ? 6 : 18),
                 ),
               ),
-              child: Text(
-                turn.content,
-                style: TextStyle(
-                  color: isUser ? Colors.white : t.text,
-                  fontSize: 15,
-                  height: 1.35,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (crisis)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.health_and_safety_rounded,
+                              size: 15, color: t.danger),
+                          const SizedBox(width: 6),
+                          Text('Срочная помощь',
+                              style: TextStyle(
+                                color: t.danger,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              )),
+                        ],
+                      ),
+                    ),
+                  Text(
+                    turn.content,
+                    style: TextStyle(color: fg, fontSize: 15, height: 1.35),
+                  ),
+                ],
               ),
             ),
           ),
@@ -383,8 +418,8 @@ class _ErrorBubble extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: t.danger.withOpacity(0.12),
-          border: Border.all(color: t.danger.withOpacity(0.3)),
+          color: t.danger.withValues(alpha: 0.12),
+          border: Border.all(color: t.danger.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Text(
