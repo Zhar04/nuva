@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/strings.dart';
 import '../theme/theme.dart';
@@ -35,6 +36,26 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
   void dispose() {
     _c.dispose();
     super.dispose();
+  }
+
+  Future<void> _addToCalendar() async {
+    final d = widget.draft;
+    final start = DateTime.parse('${d.dateIso}T${d.time}:00');
+    final end = start.add(const Duration(minutes: 50));
+    String f(DateTime x) => DateFormat("yyyyMMdd'T'HHmmss").format(x);
+    final uri = Uri.parse(
+      'https://calendar.google.com/calendar/render?action=TEMPLATE'
+      '&text=${Uri.encodeComponent('Сессия с ${d.specialist.fullName} · Nuva')}'
+      '&dates=${f(start)}/${f(end)}'
+      '&details=${Uri.encodeComponent('Сессия в приложении Nuva.')}',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть календарь')),
+      );
+    }
   }
 
   @override
@@ -161,7 +182,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
                   width: double.infinity,
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: _addToCalendar,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: t.glassBgUp,
                       foregroundColor: t.text,

@@ -44,14 +44,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   Future<void> _pay() async {
     setState(() => _processing = true);
     final d = widget.draft;
-    // Create a real booking on the backend (best-effort). Real charging must be
-    // driven by a server-side payment webhook — this mock just records intent.
+    // Booking creation is the real action (the "payment" is a mock), so a
+    // failure must be visible — we don't fake a success screen.
     try {
       final token = ref.read(backendAuthProvider.notifier).accessToken;
       await ref.read(apiClientProvider).post(
         'bookings/',
         {
-          'specialist': int.parse(d.specialist.id),
+          'specialist': int.tryParse(d.specialist.id),
           'starts_at': '${d.dateIso}T${d.time}:00',
           'format': d.format.name,
           'price_kzt': d.specialist.sessionPriceKzt,
@@ -60,9 +60,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       );
       ref.invalidate(bookingsProvider);
     } catch (_) {
-      // Needs sign-in + a real specialist id; success flow continues regardless.
+      if (!mounted) return;
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: context.nuva.danger,
+        content: const Text(
+            'Не удалось создать запись. Войдите и попробуйте снова.',
+            style: TextStyle(color: Colors.white)),
+      ));
+      return;
     }
-    await Future.delayed(const Duration(milliseconds: 1400));
+    await Future.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
     setState(() => _processing = false);
     context.go('/payment-success', extra: widget.draft);

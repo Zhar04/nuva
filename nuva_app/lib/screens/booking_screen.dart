@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
 import '../models/specialist.dart';
+import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
@@ -28,7 +29,18 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   Widget build(BuildContext context) {
     final s = S.of(ref);
     final t = context.nuva;
-    final sp = specialistCatalog.byId(widget.specialistId);
+    final list =
+        ref.watch(specialistsProvider).valueOrNull ?? specialistCatalog;
+    final sp = list.firstWhere(
+      (e) => e.id == widget.specialistId,
+      orElse: () {
+        try {
+          return specialistCatalog.byId(widget.specialistId);
+        } catch (_) {
+          return list.isNotEmpty ? list.first : specialistCatalog.first;
+        }
+      },
+    );
     final now = DateTime.now();
     final dates = List.generate(14, (i) => now.add(Duration(days: i + 1)));
 
