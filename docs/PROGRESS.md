@@ -7,6 +7,26 @@ unfinished epic, and continue, then update this file.
 
 ---
 
+## ⭐ CURRENT STATE (2026-06-15) — now building the BACKEND
+The 3 UI epics are ✅ done (`savepoint/epic-1..3`); Liquid-Morph navbar + a GitHub-Pages PWA (`https://zhar04.github.io/nuva/`) shipped. **Current focus: the real backend** — full spec in **[`docs/BACKEND_ARCHITECTURE.md`](BACKEND_ARCHITECTURE.md)**.
+
+**Backend Sprint 1 (Auth) = DONE & pushed** (latest `5946ca8`; tags `backend/sprint-1-auth`, `backend/sprint-1-app`):
+- **Django + DRF + JWT** (email/password) in `backend/`. Custom email `User` + roles. `/api/v1/auth/{register,login,refresh,me}`. **Admin panel** at `/admin`.
+- **Flutter wired:** `lib/services/api_client.dart` + `backend_auth.dart`; `auth_screen.dart` (email/password). Flow: intro slides → `/auth`; **register → role → onboarding → home**; **login → home**; **logout → gated back to /auth**.
+- **DB:** local **SQLite** (`backend/db.sqlite3`, gitignored, **persists on disk** → registered users + admin survive a reboot). Switch to Supabase Postgres later via `DATABASE_URL`.
+
+### ▶▶ RESTART AFTER A DEVICE REBOOT
+Local servers stop on reboot, but `.env` + `db.sqlite3` + `.venv` survive on disk. To bring it back:
+1. **Backend** (API + admin): `cd backend` → `.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000`
+   → admin: http://127.0.0.1:8000/admin/ (`admin@nuva.kz` / `NuvaAdmin2026!`)
+2. **App** (web; release build renders in Brave): `cd nuva_app` → `flutter build web --release` → `cd build\web` → `python -m http.server 8090 --bind 127.0.0.1` → open http://localhost:8090
+   *(Faster dev loop in Chrome: `flutter run -d chrome` from `nuva_app/` — hot reload; debug white-screens in Brave only.)*
+3. Verify: backend `GET /healthz` = ok; app loads; register → onboarding, login → home, logout → gated.
+
+**NEXT: Backend Sprint 2 — Specialists** = `Specialist`/`Education`/`Review` models + `/api/v1/specialists` + register in admin + switch the Flutter specialists list/detail from the Supabase mock → backend API. Then S3 bookings · S4 chat · S5 community · S6 mood/gamification · S7 Claude proxy + **Railway deploy**.
+
+---
+
 ## ▶ How to resume (do this first)
 1. `cd` to repo root, `git fetch`, `git status`. List savepoints: `git tag -l "savepoint/*"`.
 2. Read this file + the epic plan files in [`docs/epics/`](epics/).
