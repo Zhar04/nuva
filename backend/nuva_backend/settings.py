@@ -6,6 +6,7 @@ Local dev uses SQLite automatically; set DATABASE_URL to use Supabase Postgres.
 
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -24,13 +25,24 @@ def _env_list(key: str, default: str = "") -> list[str]:
     return [x.strip() for x in raw.split(",") if x.strip()]
 
 
+def _origins(key: str) -> list[str]:
+    """Normalize each entry to scheme://host. CORS/CSRF reject a path or a
+    trailing slash, so e.g. 'https://site.io/app/' becomes 'https://site.io'."""
+    out = []
+    for raw in _env_list(key):
+        parts = urlsplit(raw if "//" in raw else f"https://{raw}")
+        if parts.scheme and parts.netloc:
+            out.append(f"{parts.scheme}://{parts.netloc}")
+    return out
+
+
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me-in-prod")
 DEBUG = _env_bool("DEBUG", "True")
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0")
 
 # Railway provides a public domain; trust it for CSRF/host.
 RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = _origins("CSRF_TRUSTED_ORIGINS")
 if RAILWAY_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_DOMAIN)
     CSRF_TRUSTED_ORIGINS.append(f"https://{RAILWAY_DOMAIN}")
@@ -165,7 +177,7 @@ SIMPLE_JWT = {
 }
 
 # ─── CORS ─────────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS")
+CORS_ALLOWED_ORIGINS = _origins("CORS_ALLOWED_ORIGINS")
 # In local debug, allow the Flutter web dev server (any localhost port).
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 
