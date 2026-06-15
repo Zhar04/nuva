@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/strings.dart';
 import '../models/community.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -36,16 +38,19 @@ class _State extends ConsumerState<CommunityComposeScreen> {
     final s = S.of(ref);
     setState(() => _busy = true);
     try {
-      await ref
-          .read(dbProvider)
-          .publishPost(text: text, tags: _picked.toList());
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).post(
+        'community/posts/',
+        {'text': text, 'tags': _picked.toList()},
+        token: token,
+      );
       ref.invalidate(communityFeedProvider);
       navigator.maybePop();
-    } catch (_) {
+    } catch (e) {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(SnackBar(
         backgroundColor: danger,
-        content: Text(s.signInToPost,
+        content: Text(e is ApiException ? e.message : s.signInToPost,
             style: const TextStyle(color: Colors.white)),
       ));
     }

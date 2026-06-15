@@ -1,5 +1,5 @@
-/// In-app chat. `mockChats` below is the legacy local catalog (fallback only);
-/// the live screens use the backend models at the bottom of this file.
+// In-app chat. `mockChats` below is the legacy local catalog (fallback only);
+// the live screens use the backend models at the bottom of this file.
 
 import 'package:flutter/material.dart';
 

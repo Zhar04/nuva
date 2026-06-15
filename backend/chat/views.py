@@ -1,10 +1,9 @@
-import re
-
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 
 from catalog.models import Specialist
+from nuva_backend.moderation import CONTACT_BLOCKED, has_contact
 
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
@@ -12,23 +11,6 @@ from .serializers import ConversationSerializer, MessageSerializer
 WELCOME = (
     "Это защищённый чат Nuva. Сообщения видят только вы и специалист. "
     "Не делитесь телефонами и контактами вне платформы — это нарушение правил."
-)
-
-# Server-side backstop for the on-platform rule: block phone numbers, external
-# links and contact handles (Telegram / WhatsApp / Zoom / Meet / Instagram …).
-# The client mirrors this regex for instant feedback; the server enforces it.
-CONTACT_RE = re.compile(
-    r"(\+?\d[\d\s().\-]{7,}\d)"  # phone numbers
-    r"|(https?://)|(www\.)"  # any URL
-    r"|(@[\w.]{2,})"  # @handles
-    r"|(t\.me|wa\.me|zoom\.us|zoom|meet\.google|g\.co/|instagram|instagr"
-    r"|whatsapp|telegram|viber|skype|facebook|fb\.com|vk\.com|youtu"
-    r"|телеграм|вотсап|ватсап|инстаграм|вайбер|скайп|вконтакте)",
-    re.IGNORECASE,
-)
-CONTACT_BLOCKED = (
-    "Сообщение содержит контакты или внешнюю ссылку. "
-    "Общение и звонки — только внутри Nuva."
 )
 
 
@@ -88,7 +70,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
         text = (request.data.get("text") or "").strip()
         if not text:
             raise serializers.ValidationError({"text": "Пустое сообщение."})
-        if CONTACT_RE.search(text):
+        if has_contact(text):
             raise serializers.ValidationError({"text": CONTACT_BLOCKED})
         msg = Message.objects.create(
             conversation=convo, sender=Message.Sender.USER, text=text

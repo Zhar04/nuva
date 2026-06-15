@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/strings.dart';
 import '../models/community.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
+import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
@@ -17,13 +20,9 @@ class CommunityPostScreen extends ConsumerStatefulWidget {
 
 class _State extends ConsumerState<CommunityPostScreen> {
   final _input = TextEditingController();
-  late List<CommunityReply> _replies;
+  bool _sending = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _replies = List.of(communitySampleReplies);
-  }
+  int get _postId => int.tryParse(widget.postId) ?? -1;
 
   @override
   void dispose() {
@@ -31,32 +30,65 @@ class _State extends ConsumerState<CommunityPostScreen> {
     super.dispose();
   }
 
-  void _send() {
+  CommunityPost? _mockPost() {
+    for (final p in communityFeed) {
+      if (p.id == widget.postId) return p;
+    }
+    return null;
+  }
+
+  Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      _replies.insert(
-        0,
-        CommunityReply(
-          id: 'r${_replies.length + 1}',
-          author: const CommunityAuthor(
-            alias: 'Вы',
-            gradient: [Color(0xFF7FE0D4), Color(0xFFB0EDE5)],
-          ),
-          text: text,
-          timeLabel: 'только что',
-          likes: 0,
-        ),
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).post(
+        'community/posts/$_postId/replies/',
+        {'text': text},
+        token: token,
       );
       _input.clear();
-    });
+      ref.invalidate(communityRepliesProvider(_postId));
+      ref.invalidate(communityPostProvider(_postId));
+      ref.invalidate(communityFeedProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: context.nuva.danger,
+          content: Text(e is ApiException ? e.message : 'Не удалось отправить',
+              style: const TextStyle(color: Colors.white)),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(ref);
     final t = context.nuva;
-    final post = communityFeed.firstWhere((p) => p.id == widget.postId);
+    final postAsync = ref.watch(communityPostProvider(_postId));
+    final post = postAsync.valueOrNull ?? _mockPost();
+    final replies =
+        ref.watch(communityRepliesProvider(_postId)).valueOrNull ??
+            const <CommunityReply>[];
+
+    if (post == null) {
+      return Scaffold(
+        body: GlassBackdrop(
+          child: SafeArea(
+            child: Center(
+              child: postAsync.isLoading
+                  ? const CircularProgressIndicator()
+                  : Text('Пост недоступен',
+                      style: TextStyle(color: t.textSec)),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: GlassBackdrop(
@@ -90,7 +122,7 @@ class _State extends ConsumerState<CommunityPostScreen> {
                     Row(
                       children: [
                         Text(
-                          '${_replies.length} ${s.lang == AppLang.en ? "replies" : "ответов"}',
+                          '${replies.length} ${s.lang == AppLang.en ? "replies" : "ответов"}',
                           style: TextStyle(
                             color: t.textSec,
                             fontSize: 12.5,
@@ -100,7 +132,19 @@ class _State extends ConsumerState<CommunityPostScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    ..._replies.map((r) => _ReplyCard(reply: r)),
+                    if (replies.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            s.lang == AppLang.en
+                                ? 'Be the first to reply'
+                                : 'Будьте первым, кто ответит',
+                            style: TextStyle(color: t.textTer, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ...replies.map((r) => _ReplyCard(reply: r)),
                   ],
                 ),
               ),

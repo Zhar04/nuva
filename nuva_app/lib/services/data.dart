@@ -55,21 +55,60 @@ final specialistDetailProvider =
   }
 });
 
-/// Community feed for a tag — from Supabase, falling back to mock posts.
-/// Re-runs on auth changes so a freshly published post shows up.
+/// Community feed for a tag — from the Django backend (`/community/posts/`),
+/// falling back to mock posts when unreachable. Re-runs on auth changes.
 final communityFeedProvider =
     FutureProvider.family<List<CommunityPost>, String>((ref, tag) async {
-  ref.watch(authStateProvider);
-  final db = ref.watch(dbProvider);
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  final api = ref.watch(apiClientProvider);
   List<CommunityPost> mock() => tag == 'Все'
       ? communityFeed
       : communityFeed.where((p) => p.tags.contains(tag)).toList();
+  if (token == null) return mock();
   try {
-    final rows = await db.fetchCommunityFeed(tag: tag);
-    if (rows.isEmpty) return mock();
-    return rows.map(CommunityPost.fromMap).toList();
+    final path = tag == 'Все'
+        ? 'community/posts/'
+        : 'community/posts/?tag=${Uri.encodeQueryComponent(tag)}';
+    final rows = await api.getList(path, token: token);
+    return rows
+        .map((m) => CommunityPost.fromMap(m as Map<String, dynamic>))
+        .toList();
   } catch (_) {
     return mock();
+  }
+});
+
+/// A single community post (with up-to-date like state) from the backend.
+final communityPostProvider =
+    FutureProvider.family<CommunityPost?, int>((ref, id) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return null;
+  final api = ref.watch(apiClientProvider);
+  try {
+    final m = await api.get('community/posts/$id/', token: token);
+    return CommunityPost.fromMap(m);
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Replies to a community post.
+final communityRepliesProvider =
+    FutureProvider.family<List<CommunityReply>, int>((ref, postId) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  final api = ref.watch(apiClientProvider);
+  try {
+    final rows =
+        await api.getList('community/posts/$postId/replies/', token: token);
+    return rows
+        .map((m) => CommunityReply.fromMap(m as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
   }
 });
 

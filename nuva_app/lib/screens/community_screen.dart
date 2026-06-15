@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../l10n/strings.dart';
 import '../models/community.dart';
+import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -217,7 +218,11 @@ class _PostCard extends ConsumerWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _Action(icon: Icons.favorite_outline_rounded, count: post.likes),
+              _LikeButton(
+                postId: int.tryParse(post.id) ?? -1,
+                liked: post.liked,
+                count: post.likes,
+              ),
               const SizedBox(width: 16),
               _Action(icon: Icons.chat_bubble_outline_rounded, count: post.replies),
               const Spacer(),
@@ -249,6 +254,82 @@ class _Action extends StatelessWidget {
               fontWeight: FontWeight.w500,
             )),
       ],
+    );
+  }
+}
+
+/// Tappable like with optimistic toggle, reconciled with the backend.
+class _LikeButton extends ConsumerStatefulWidget {
+  final int postId;
+  final bool liked;
+  final int count;
+  const _LikeButton(
+      {required this.postId, required this.liked, required this.count});
+
+  @override
+  ConsumerState<_LikeButton> createState() => _LikeButtonState();
+}
+
+class _LikeButtonState extends ConsumerState<_LikeButton> {
+  late bool _liked = widget.liked;
+  late int _count = widget.count;
+  bool _busy = false;
+
+  Future<void> _toggle() async {
+    if (_busy || widget.postId < 0) return;
+    final prevLiked = _liked, prevCount = _count;
+    setState(() {
+      _liked = !_liked;
+      _count += _liked ? 1 : -1;
+      _busy = true;
+    });
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      final res = await ref.read(apiClientProvider).post(
+        'community/posts/${widget.postId}/like/',
+        const <String, dynamic>{},
+        token: token,
+      );
+      if (mounted) {
+        setState(() {
+          _liked = (res['liked'] as bool?) ?? _liked;
+          _count = (res['likes_count'] as num?)?.toInt() ?? _count;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _liked = prevLiked;
+          _count = prevCount;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggle,
+      child: Row(
+        children: [
+          Icon(
+            _liked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+            size: 16,
+            color: _liked ? t.danger : t.textSec,
+          ),
+          const SizedBox(width: 5),
+          Text('$_count',
+              style: TextStyle(
+                color: t.textSec,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+              )),
+        ],
+      ),
     );
   }
 }

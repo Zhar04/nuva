@@ -20,6 +20,7 @@ class CommunityPost {
   final int likes;
   final int replies;
   final bool isSupported; // marked as supportive by community
+  final bool liked; // whether the current user liked this post
   const CommunityPost({
     required this.id,
     required this.author,
@@ -29,16 +30,17 @@ class CommunityPost {
     required this.likes,
     required this.replies,
     this.isSupported = false,
+    this.liked = false,
   });
 
   /// Build from a Supabase `community_posts` row. The feed query selects
   /// `replies:community_replies(count)`, which arrives as `[{count: n}]`.
   factory CommunityPost.fromMap(Map<String, dynamic> m) {
-    var replies = 0;
+    var replies = (m['replies_count'] as num?)?.toInt() ?? 0;
     final r = m['replies'];
-    if (r is List && r.isNotEmpty && r.first is Map) {
+    if (replies == 0 && r is List && r.isNotEmpty && r.first is Map) {
       replies = ((r.first as Map)['count'] as num?)?.toInt() ?? 0;
-    } else if (r is num) {
+    } else if (replies == 0 && r is num) {
       replies = r.toInt();
     }
     final alias = (m['author_alias'] ?? 'Аноним') as String;
@@ -55,6 +57,7 @@ class CommunityPost {
       likes: (m['likes_count'] as num?)?.toInt() ?? 0,
       replies: replies,
       isSupported: (m['is_supported'] as bool?) ?? false,
+      liked: (m['liked'] as bool?) ?? false,
     );
   }
 }
@@ -74,6 +77,20 @@ class CommunityReply {
     required this.likes,
     this.fromSpecialist = false,
   });
+
+  factory CommunityReply.fromMap(Map<String, dynamic> m) {
+    final alias = (m['author_alias'] ?? 'Аноним') as String;
+    return CommunityReply(
+      id: '${m['id']}',
+      author: CommunityAuthor(alias: alias, gradient: aliasGradient(alias)),
+      text: (m['text'] ?? '') as String,
+      timeLabel: relativeRu(
+        DateTime.tryParse('${m['created_at']}')?.toLocal() ?? DateTime.now(),
+      ),
+      likes: (m['likes_count'] as num?)?.toInt() ?? 0,
+      fromSpecialist: (m['from_specialist'] as bool?) ?? false,
+    );
+  }
 }
 
 const _authors = [
