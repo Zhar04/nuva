@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../l10n/strings.dart';
-import '../services/data.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 
-/// Phone-OTP sign-in with an "enter anonymously" shortcut. Non-blocking: the
-/// app is usable without it; this just attaches a real Supabase identity so
-/// RLS-protected writes (posts, bookings, mood) work.
+/// Email + password sign-in / registration against the Nuva backend (JWT).
+/// Non-blocking: "Продолжить без аккаунта" keeps the app usable.
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
@@ -19,15 +17,17 @@ class AuthScreen extends ConsumerStatefulWidget {
 }
 
 class _AuthScreenState extends ConsumerState<AuthScreen> {
-  final _phone = TextEditingController(text: '+7');
-  final _code = TextEditingController();
-  bool _codeSent = false;
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _name = TextEditingController();
+  bool _register = false;
   bool _busy = false;
 
   @override
   void dispose() {
-    _phone.dispose();
-    _code.dispose();
+    _email.dispose();
+    _password.dispose();
+    _name.dispose();
     super.dispose();
   }
 
@@ -40,52 +40,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     ));
   }
 
-  Future<void> _sendCode() async {
-    final s = S.of(ref);
-    setState(() => _busy = true);
-    try {
-      await ref.read(authServiceProvider).sendOtp(_phone.text.trim());
-      if (!mounted) return;
-      setState(() => _codeSent = true);
-      _snack(s.otpSent);
-    } catch (_) {
-      _snack(s.authError, error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
+  Future<void> _submit() async {
+    final email = _email.text.trim();
+    final password = _password.text;
+    if (email.isEmpty || password.isEmpty) {
+      _snack('Введите email и пароль', error: true);
+      return;
     }
-  }
-
-  Future<void> _verify() async {
-    final s = S.of(ref);
     setState(() => _busy = true);
+    final auth = ref.read(backendAuthProvider.notifier);
     try {
-      final ok = await ref.read(authServiceProvider).verifyOtp(
-            phoneE164: _phone.text.trim(),
-            code: _code.text.trim(),
-          );
-      if (!mounted) return;
-      if (ok) {
-        context.go('/home');
+      if (_register) {
+        await auth.register(
+            email: email, password: password, name: _name.text.trim());
+        _snack('Аккаунт создан');
       } else {
-        _snack(s.authError, error: true);
+        await auth.login(email: email, password: password);
+        _snack('С возвращением!');
       }
+      if (mounted) context.go('/home');
+    } on ApiException catch (e) {
+      _snack(e.message, error: true);
     } catch (_) {
-      _snack(s.authError, error: true);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _anon() async {
-    final s = S.of(ref);
-    setState(() => _busy = true);
-    try {
-      await ref.read(authServiceProvider).signInAnonymously();
-      if (!mounted) return;
-      _snack(s.signedInAnon);
-      context.go('/home');
-    } catch (_) {
-      _snack(s.authError, error: true);
+      _snack('Нет связи с сервером. Бэкенд запущен?', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -93,12 +70,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final s = S.of(ref);
     final t = context.nuva;
 
-    InputDecoration deco(String hint) => InputDecoration(
+    InputDecoration deco(String hint, IconData icon) => InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: t.textTer),
+          prefixIcon: Icon(icon, color: t.textSec, size: 20),
           filled: true,
           fillColor: t.glassBgUp,
           contentPadding:
@@ -116,7 +93,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Scaffold(
       body: GlassBackdrop(
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,81 +101,97 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: IconButton(
-                    onPressed: () => context.canPop()
-                        ? context.pop()
-                        : context.go('/home'),
+                    onPressed: () =>
+                        context.canPop() ? context.pop() : context.go('/home'),
                     icon: Icon(Icons.arrow_back_ios_new_rounded,
                         color: t.text, size: 18),
                   ),
                 ),
-                const Spacer(),
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [t.blue, t.teal]),
-                    borderRadius: BorderRadius.circular(22),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [t.blue, t.teal]),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: const Icon(Icons.lock_outline_rounded,
+                        color: Colors.white, size: 34),
                   ),
-                  child: const Icon(Icons.lock_outline_rounded,
-                      color: Colors.white, size: 34),
                 ),
                 const SizedBox(height: 20),
-                Text(s.signInTitle,
+                Text(_register ? 'Создать аккаунт' : 'Вход в Nuva',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: t.text,
                       fontSize: 24,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -0.4,
                     )),
                 const SizedBox(height: 8),
-                Text(s.signInSub,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: t.textSec, fontSize: 14, height: 1.5)),
-                const SizedBox(height: 28),
-                TextField(
-                  controller: _phone,
-                  keyboardType: TextInputType.phone,
-                  style: TextStyle(color: t.text, fontSize: 16),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
-                    LengthLimitingTextInputFormatter(15),
-                  ],
-                  decoration: deco(s.phoneNumber),
+                Text(
+                  _register
+                      ? 'Email и пароль — этого достаточно для начала.'
+                      : 'Войдите по email и паролю.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: t.textSec, fontSize: 14, height: 1.5),
                 ),
-                if (_codeSent) ...[
-                  const SizedBox(height: 12),
+                const SizedBox(height: 26),
+                if (_register) ...[
                   TextField(
-                    controller: _code,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(color: t.text, fontSize: 16, letterSpacing: 4),
-                    textAlign: TextAlign.center,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(6),
-                    ],
-                    decoration: deco(s.smsCode),
+                    controller: _name,
+                    textCapitalization: TextCapitalization.words,
+                    style: TextStyle(color: t.text, fontSize: 15),
+                    decoration: deco('Имя или псевдоним', Icons.person_outline),
                   ),
+                  const SizedBox(height: 12),
                 ],
-                const SizedBox(height: 18),
-                PrimaryButton(
-                  label: _codeSent ? s.verifyCode : s.sendCode,
-                  onPressed: _busy ? null : (_codeSent ? _verify : _sendCode),
+                TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  style: TextStyle(color: t.text, fontSize: 15),
+                  decoration: deco('Email', Icons.alternate_email_rounded),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _busy ? null : _anon,
-                  child: Text(s.continueAnon,
-                      style: TextStyle(
-                        color: t.textSec,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      )),
+                TextField(
+                  controller: _password,
+                  obscureText: true,
+                  style: TextStyle(color: t.text, fontSize: 15),
+                  onSubmitted: (_) => _busy ? null : _submit(),
+                  decoration: deco('Пароль (мин. 8 символов)',
+                      Icons.lock_outline_rounded),
                 ),
-                const Spacer(),
+                const SizedBox(height: 20),
+                PrimaryButton(
+                  label: _register ? 'Зарегистрироваться' : 'Войти',
+                  onPressed: _busy ? null : _submit,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() => _register = !_register),
+                  child: Text(
+                    _register
+                        ? 'Уже есть аккаунт? Войти'
+                        : 'Нет аккаунта? Зарегистрироваться',
+                    style: TextStyle(
+                        color: t.blue,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: _busy ? null : () => context.go('/home'),
+                  child: Text('Продолжить без аккаунта',
+                      style: TextStyle(color: t.textSec, fontSize: 13.5)),
+                ),
                 if (_busy)
                   const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.only(top: 12),
                     child: Center(
                       child: SizedBox(
                         width: 22,

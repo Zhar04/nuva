@@ -7,6 +7,7 @@ import '../l10n/strings.dart';
 import '../models/chat.dart';
 import '../models/specialist.dart';
 import '../models/user_profile.dart';
+import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -113,6 +114,7 @@ class ProfileScreen extends ConsumerWidget {
               Center(
                 child: TextButton(
                   onPressed: () async {
+                    await ref.read(backendAuthProvider.notifier).logout();
                     await ref.read(authServiceProvider).signOut();
                     if (context.mounted) context.go('/auth');
                   },
