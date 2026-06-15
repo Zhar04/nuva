@@ -16,7 +16,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await dotenv.load(fileName: '.env');
-  } catch (_) {}
+  } catch (_) {
+    // If .env is missing (e.g. a static host that hides dotfiles), keep dotenv
+    // INITIALIZED with an empty map — otherwise every dotenv.env[...] access
+    // throws NotInitializedError and the app white-screens on startup.
+    dotenv.testLoad(fileInput: '');
+  }
 
   await initializeDateFormatting('ru');
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
