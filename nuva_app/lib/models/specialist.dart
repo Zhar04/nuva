@@ -77,7 +77,7 @@ class Specialist {
       education: ((m['education'] as List?) ?? const [])
           .map((e) => Education.fromMap(e as Map<String, dynamic>))
           .toList(),
-      diplomas: const [],
+      diplomas: strList(m['diplomas']),
       reviews: ((m['reviews'] as List?) ?? const [])
           .map((e) => Review.fromMap(e as Map<String, dynamic>))
           .toList(),

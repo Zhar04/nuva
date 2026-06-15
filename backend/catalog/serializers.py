@@ -21,7 +21,7 @@ class SpecialistListSerializer(serializers.ModelSerializer):
         fields = (
             "id", "first_name", "last_name", "title", "years_experience",
             "languages", "approaches", "works_with", "session_price_kzt",
-            "rating", "review_count", "about", "avatar_gradient",
+            "rating", "review_count", "about", "diplomas", "avatar_gradient",
             "is_verified", "is_active",
         )
 

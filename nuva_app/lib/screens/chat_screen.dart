@@ -12,9 +12,17 @@ import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
 
+// Mirrors the server-side CONTACT_RE: phone numbers, URLs, @handles and the
+// common contact / external-call services. Keeps communication on-platform.
 final _contactRe = RegExp(
-  r'(\+?\d[\d\s\-]{8,})|(\b(?:whatsapp|telegram|wa\.me|t\.me|@[a-z0-9_]+)\b)',
+  r'(\+?\d[\d\s().\-]{7,}\d)'
+  r'|(https?://)|(www\.)'
+  r'|(@[\w.]{2,})'
+  r'|(t\.me|wa\.me|zoom\.us|zoom|meet\.google|g\.co/|instagram|instagr'
+  r'|whatsapp|telegram|viber|skype|facebook|fb\.com|vk\.com|youtu'
+  r'|телеграм|вотсап|ватсап|инстаграм|вайбер|скайп|вконтакте)',
   caseSensitive: false,
+  unicode: true,
 );
 
 class ChatScreen extends ConsumerStatefulWidget {

@@ -16,6 +16,9 @@ class Specialist(models.Model):
     rating = models.DecimalField(max_digits=2, decimal_places=1, default=0)
     review_count = models.PositiveIntegerField(default=0)
     about = models.TextField(blank=True, default="")
+    diplomas = models.JSONField(
+        default=list, blank=True, help_text="Названия дипломов и сертификатов"
+    )
     avatar_gradient = models.JSONField(
         default=list, blank=True, help_text="['#7FB7E8','#A3D8F4']"
     )
