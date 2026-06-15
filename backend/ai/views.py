@@ -77,6 +77,10 @@ def _groq_chat(message: str, key: str, model: str) -> str:
         headers={
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
+            # Groq is behind Cloudflare, which 403s the default Python-urllib
+            # User-Agent (error 1010). A normal UA passes.
+            "User-Agent": "Nuva-Backend/1.0 (+https://nuva.kz)",
+            "Accept": "application/json",
         },
         method="POST",
     )
