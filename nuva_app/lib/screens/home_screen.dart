@@ -248,7 +248,7 @@ class _UpcomingSession extends ConsumerWidget {
     final dateLabel = DateFormat('d MMM · EEEE', 'ru').format(tomorrow);
 
     return GlassCard(
-      onTap: () => context.push('/chats/c1'),
+      onTap: () => context.push('/chats'),
       elevated: true,
       radius: 22,
       padding: const EdgeInsets.all(16),

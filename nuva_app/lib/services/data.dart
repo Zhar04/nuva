@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/booking.dart';
+import '../models/chat.dart';
 import '../models/community.dart';
 import '../models/specialist.dart';
 import 'auth_service.dart';
@@ -70,6 +71,37 @@ final communityFeedProvider =
   } catch (_) {
     return mock();
   }
+});
+
+/// The current user's chat threads (`/api/v1/chat/conversations/`).
+final conversationsProvider = FutureProvider<List<ApiConversation>>((ref) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  final api = ref.watch(apiClientProvider);
+  try {
+    final rows = await api.getList('chat/conversations/', token: token);
+    return rows
+        .map((m) => ApiConversation.fromJson(m as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
+  }
+});
+
+/// Messages in one conversation. Opening also marks specialist msgs as read
+/// (server side), so we invalidate [conversationsProvider] after reading.
+final messagesProvider =
+    FutureProvider.family<List<ApiMessage>, int>((ref, convoId) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  final api = ref.watch(apiClientProvider);
+  final rows =
+      await api.getList('chat/conversations/$convoId/messages/', token: token);
+  return rows
+      .map((m) => ApiMessage.fromJson(m as Map<String, dynamic>))
+      .toList();
 });
 
 /// The current user's bookings from the backend (`/api/v1/bookings/`).

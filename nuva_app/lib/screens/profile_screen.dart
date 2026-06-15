@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
-import '../models/chat.dart';
 import '../models/specialist.dart';
 import '../models/user_profile.dart';
 import '../services/backend_auth.dart';
@@ -40,7 +39,8 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.chat_bubble_outline_rounded,
                   label: s.chats,
-                  trailing: '${mockChats.length}',
+                  trailing:
+                      '${ref.watch(conversationsProvider).valueOrNull?.length ?? 0}',
                   onTap: () => context.push('/chats'),
                 ),
                 _MenuItem(

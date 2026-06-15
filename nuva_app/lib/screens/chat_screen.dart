@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
 import '../models/chat.dart';
-import '../models/specialist.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
+import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
@@ -16,7 +18,7 @@ final _contactRe = RegExp(
 );
 
 class ChatScreen extends ConsumerStatefulWidget {
-  final String chatId;
+  final String chatId; // conversation id
   const ChatScreen({super.key, required this.chatId});
 
   @override
@@ -26,17 +28,20 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _State extends ConsumerState<ChatScreen> {
   final _scroll = ScrollController();
   final _input = TextEditingController();
-  late List<Message> _messages;
   bool _showContactWarning = false;
-  bool _specialistTyping = false;
+  bool _sending = false;
+  bool _markedRead = false;
+  int _lastCount = 0;
+
+  /// Locally-appended messages awaiting the server refetch (optimistic UI).
+  final List<ApiMessage> _optimistic = [];
+
+  int get _convoId => int.tryParse(widget.chatId) ?? -1;
 
   @override
   void initState() {
     super.initState();
-    final chat = mockChats.firstWhere((c) => c.id == widget.chatId);
-    _messages = List.of(chat.messages);
     _input.addListener(_check);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _toEnd(jump: true));
   }
 
   @override
@@ -47,52 +52,57 @@ class _State extends ConsumerState<ChatScreen> {
   }
 
   void _check() {
-    final text = _input.text;
-    final has = _contactRe.hasMatch(text);
+    final has = _contactRe.hasMatch(_input.text);
     if (has != _showContactWarning) {
       setState(() => _showContactWarning = has);
     }
   }
 
-  void _send() {
+  Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _sending) return;
     if (_contactRe.hasMatch(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: context.nuva.danger,
-          content: Text(S.of(ref).contactWarning,
-              style: const TextStyle(color: Colors.white)),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: context.nuva.danger,
+        content: Text(S.of(ref).contactWarning,
+            style: const TextStyle(color: Colors.white)),
+      ));
       return;
     }
+    final optimistic = ApiMessage(
+      id: -DateTime.now().millisecondsSinceEpoch,
+      sender: MsgSender.user,
+      text: text,
+      isRead: false,
+      sentAt: DateTime.now(),
+    );
     setState(() {
-      _messages.add(Message(
-        id: 'u${_messages.length}',
-        sender: MsgSender.user,
-        text: text,
-        sentAt: DateTime.now(),
-      ));
+      _optimistic.add(optimistic);
       _input.clear();
-      _specialistTyping = true;
+      _sending = true;
     });
     _toEnd();
-    // Auto-reply simulation
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() {
-        _specialistTyping = false;
-        _messages.add(Message(
-          id: 's${_messages.length}',
-          sender: MsgSender.specialist,
-          text:
-              'Спасибо, что поделились. Запомним это и обсудим на сессии — попробуйте до тех пор отметить в дневнике, что предшествовало этому ощущению.',
-          sentAt: DateTime.now(),
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).post(
+        'chat/conversations/$_convoId/messages/',
+        {'text': text},
+        token: token,
+      );
+      ref.invalidate(messagesProvider(_convoId));
+      ref.invalidate(conversationsProvider);
+    } catch (e) {
+      _optimistic.remove(optimistic);
+      if (mounted) {
+        final msg = e is ApiException ? e.message : 'Не удалось отправить';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: context.nuva.danger,
+          content: Text(msg, style: const TextStyle(color: Colors.white)),
         ));
-      });
-      _toEnd();
-    });
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   void _toEnd({bool jump = false}) {
@@ -103,8 +113,7 @@ class _State extends ConsumerState<ChatScreen> {
         _scroll.jumpTo(target);
       } else {
         _scroll.animateTo(target,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut);
+            duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
       }
     });
   }
@@ -112,50 +121,90 @@ class _State extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(ref);
-    final t = context.nuva;
-    final chat = mockChats.firstWhere((c) => c.id == widget.chatId);
-    final sp = specialistCatalog.byId(chat.specialistId);
+
+    final convos = ref.watch(conversationsProvider).valueOrNull ??
+        const <ApiConversation>[];
+    ApiConversation? found;
+    for (final c in convos) {
+      if (c.id == _convoId) {
+        found = c;
+        break;
+      }
+    }
+    final convo = found; // final -> promotable inside closures
+    final messagesAsync = ref.watch(messagesProvider(_convoId));
+    final server = messagesAsync.valueOrNull ?? const <ApiMessage>[];
+
+    // Merge server + still-pending optimistic messages (drop ones the server
+    // has now echoed back by text+sender).
+    final pending = _optimistic
+        .where((o) => !server.any((m) =>
+            m.sender == MsgSender.user && m.text == o.text))
+        .toList();
+    final messages = [...server, ...pending];
+
+    // Opening the thread marks specialist messages read on the server; refresh
+    // the list once so the unread badge clears.
+    if (!_markedRead && messagesAsync.hasValue) {
+      _markedRead = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.invalidate(conversationsProvider);
+      });
+    }
+    if (messages.length != _lastCount) {
+      _lastCount = messages.length;
+      _toEnd(jump: true);
+    }
 
     return Scaffold(
       body: GlassBackdrop(
         child: SafeArea(
           child: Column(
             children: [
-              _Header(sp: sp, online: chat.specialistOnline, typing: _specialistTyping),
-              if (chat.nextSessionAt != null)
-                _SessionBanner(
-                  at: chat.nextSessionAt!,
-                  onJoin: () => context.push('/call/${sp.id}'),
-                ),
+              _Header(
+                name: convo?.specialistName ?? 'Специалист',
+                subtitle: convo?.title ?? '',
+                initials: convo?.specialistInitials ?? '·',
+                gradient: convo?.gradient ??
+                    const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
+                onVideo: convo == null
+                    ? null
+                    : () => context.push('/call/${convo.specialistId}'),
+              ),
               Expanded(
-                child: ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  itemCount: _messages.length + (_specialistTyping ? 1 : 0),
-                  itemBuilder: (_, i) {
-                    if (_specialistTyping && i == _messages.length) {
-                      return _TypingBubble(gradient: sp.avatarGradient);
-                    }
-                    final m = _messages[i];
-                    final prev = i > 0 ? _messages[i - 1] : null;
-                    final showDate = prev == null ||
-                        prev.sentAt.day != m.sentAt.day ||
-                        prev.sentAt.month != m.sentAt.month;
-                    return Column(
-                      children: [
-                        if (showDate) _DateChip(date: m.sentAt),
-                        _MessageBubble(msg: m, gradient: sp.avatarGradient),
-                      ],
-                    );
-                  },
-                ),
+                child: messagesAsync.isLoading && server.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        controller: _scroll,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        itemCount: messages.length,
+                        itemBuilder: (_, i) {
+                          final m = messages[i];
+                          final prev = i > 0 ? messages[i - 1] : null;
+                          final showDate = prev == null ||
+                              prev.sentAt.day != m.sentAt.day ||
+                              prev.sentAt.month != m.sentAt.month;
+                          return Column(
+                            children: [
+                              if (showDate) _DateChip(date: m.sentAt),
+                              _MessageBubble(
+                                  msg: m,
+                                  gradient: convo?.gradient ??
+                                      const [
+                                        Color(0xFF7FB7E8),
+                                        Color(0xFFA3D8F4)
+                                      ]),
+                            ],
+                          );
+                        },
+                      ),
               ),
               if (_showContactWarning) _ContactWarn(text: s.contactWarning),
               _Composer(
                 controller: _input,
                 hint: s.messagePlaceholder,
                 onSend: _send,
-                disabled: _showContactWarning,
+                disabled: _showContactWarning || _sending,
               ),
             ],
           ),
@@ -166,10 +215,18 @@ class _State extends ConsumerState<ChatScreen> {
 }
 
 class _Header extends ConsumerWidget {
-  final Specialist sp;
-  final bool online;
-  final bool typing;
-  const _Header({required this.sp, required this.online, required this.typing});
+  final String name;
+  final String subtitle;
+  final String initials;
+  final List<Color> gradient;
+  final VoidCallback? onVideo;
+  const _Header({
+    required this.name,
+    required this.subtitle,
+    required this.initials,
+    required this.gradient,
+    this.onVideo,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -184,8 +241,8 @@ class _Header extends ConsumerWidget {
             icon: Icon(Icons.arrow_back_ios_new_rounded, color: t.text, size: 18),
           ),
           GradientAvatar(
-            initials: sp.initials,
-            gradient: sp.avatarGradient,
+            initials: initials,
+            gradient: gradient,
             size: 38,
             radius: 999,
             fontSize: 14,
@@ -198,7 +255,7 @@ class _Header extends ConsumerWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(sp.fullName,
+                      child: Text(name,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: t.text,
@@ -208,116 +265,22 @@ class _Header extends ConsumerWidget {
                     ),
                     const SizedBox(width: 4),
                     Icon(Icons.verified_rounded, color: t.blue, size: 12),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: t.blue.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        s.psychologist,
-                        style: TextStyle(
-                          color: t.blue,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 Text(
-                  typing ? s.typing : (online ? s.online : s.offline),
-                  style: TextStyle(
-                    color: typing || online ? t.teal : t.textTer,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  subtitle.isEmpty ? s.psychologist : subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: t.textSec, fontSize: 11),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: onVideo,
             icon: Icon(Icons.videocam_outlined, color: t.text, size: 22),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: Icon(Icons.more_horiz_rounded, color: t.text, size: 22),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _SessionBanner extends ConsumerWidget {
-  final DateTime at;
-  final VoidCallback onJoin;
-  const _SessionBanner({required this.at, required this.onJoin});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = S.of(ref);
-    final t = context.nuva;
-    final label = DateFormat('d MMMM · HH:mm', 'ru').format(at);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [t.blue.withValues(alpha: 0.95), t.teal.withValues(alpha: 0.95)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.event_rounded, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Ближайшая сессия',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
-                      )),
-                  Text(label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                      )),
-                ],
-              ),
-            ),
-            ElevatedButton(
-              onPressed: onJoin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: t.blue,
-                elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              child: Text(s.joinVideo),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -360,13 +323,12 @@ class _DateChip extends StatelessWidget {
 }
 
 class _MessageBubble extends ConsumerWidget {
-  final Message msg;
+  final ApiMessage msg;
   final List<Color> gradient;
   const _MessageBubble({required this.msg, required this.gradient});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final s = S.of(ref);
     final t = context.nuva;
     if (msg.sender == MsgSender.system) {
       return Padding(
@@ -384,10 +346,8 @@ class _MessageBubble extends ConsumerWidget {
               Icon(Icons.lock_outline_rounded, size: 14, color: t.teal),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  msg.text,
-                  style: TextStyle(color: t.teal, fontSize: 12, height: 1.4),
-                ),
+                child: Text(msg.text,
+                    style: TextStyle(color: t.teal, fontSize: 12, height: 1.4)),
               ),
             ],
           ),
@@ -438,117 +398,18 @@ class _MessageBubble extends ConsumerWidget {
                         height: 1.4,
                       )),
                   const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(time,
-                          style: TextStyle(
-                            color: isUser
-                                ? Colors.white.withValues(alpha: 0.65)
-                                : t.textTer,
-                            fontSize: 10,
-                          )),
-                      if (isUser) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          msg.isRead
-                              ? Icons.done_all_rounded
-                              : Icons.check_rounded,
-                          size: 12,
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                      ],
-                    ],
-                  ),
+                  Text(time,
+                      style: TextStyle(
+                        color: isUser
+                            ? Colors.white.withValues(alpha: 0.65)
+                            : t.textTer,
+                        fontSize: 10,
+                      )),
                 ],
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TypingBubble extends StatelessWidget {
-  final List<Color> gradient;
-  const _TypingBubble({required this.gradient});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.nuva;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          GradientAvatar(
-            initials: 'А',
-            gradient: gradient,
-            size: 28,
-            radius: 999,
-            fontSize: 12,
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: t.glassBgUp,
-              border: Border.all(color: t.glassBorder),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: List.generate(3, (i) {
-                return Padding(
-                  padding: EdgeInsets.only(right: i < 2 ? 4 : 0),
-                  child: _Dot(delay: i * 160),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Dot extends StatefulWidget {
-  final int delay;
-  const _Dot({required this.delay});
-
-  @override
-  State<_Dot> createState() => _DotState();
-}
-
-class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _c.repeat(reverse: true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.nuva;
-    return FadeTransition(
-      opacity: Tween(begin: 0.3, end: 1.0).animate(_c),
-      child: Container(
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(color: t.blue, shape: BoxShape.circle),
       ),
     );
   }
@@ -610,11 +471,6 @@ class _Composer extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          IconButton(
-            onPressed: () {},
-            icon: Icon(Icons.add_circle_outline_rounded,
-                color: t.textSec, size: 24),
-          ),
           Expanded(
             child: TextField(
               controller: controller,
@@ -626,8 +482,8 @@ class _Composer extends StatelessWidget {
                 hintStyle: TextStyle(color: t.textTer, fontSize: 13.5),
                 filled: true,
                 fillColor: t.glassBgUp,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 11),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide(color: t.glassBorder),

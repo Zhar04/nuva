@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
 import '../models/specialist.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -12,6 +14,34 @@ import '../widgets/glass.dart';
 
 final _priceFmt =
     NumberFormat.currency(locale: 'ru_KZ', symbol: '₸', decimalDigits: 0);
+
+/// Open (or reuse) a chat thread with a specialist, then navigate to it.
+Future<void> openSpecialistChat(
+    BuildContext context, WidgetRef ref, String specialistId) async {
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  final id = int.tryParse(specialistId);
+  void warn(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: context.nuva.danger,
+        content: Text(m, style: const TextStyle(color: Colors.white)),
+      ));
+  if (token == null || id == null) {
+    warn('Войдите, чтобы написать специалисту');
+    return;
+  }
+  try {
+    final res = await ref.read(apiClientProvider).post(
+      'chat/conversations/',
+      {'specialist': id},
+      token: token,
+    );
+    ref.invalidate(conversationsProvider);
+    if (context.mounted) context.push('/chats/${res['id']}');
+  } catch (e) {
+    if (context.mounted) {
+      warn(e is ApiException ? e.message : 'Не удалось открыть чат');
+    }
+  }
+}
 
 class SpecialistsScreen extends ConsumerWidget {
   final bool showBack;
@@ -247,8 +277,8 @@ class SpecialistDetailScreen extends ConsumerWidget {
                           color: t.text, size: 20),
                     ),
                     IconButton(
-                      onPressed: () {},
-                      icon: Icon(Icons.share_outlined,
+                      onPressed: () => openSpecialistChat(context, ref, sp.id),
+                      icon: Icon(Icons.chat_bubble_outline_rounded,
                           color: t.text, size: 20),
                     ),
                   ],

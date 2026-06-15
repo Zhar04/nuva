@@ -28,7 +28,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(ref);
-    final t = context.nuva;
     final list =
         ref.watch(specialistsProvider).valueOrNull ?? specialistCatalog;
     final sp = list.firstWhere(

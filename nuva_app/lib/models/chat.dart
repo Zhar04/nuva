@@ -1,4 +1,9 @@
-/// Phase-0 in-app chat. All data local. Phase 1 = realtime via Supabase / Firestore.
+/// In-app chat. `mockChats` below is the legacy local catalog (fallback only);
+/// the live screens use the backend models at the bottom of this file.
+
+import 'package:flutter/material.dart';
+
+import '../utils/format.dart';
 
 enum MsgSender { user, specialist, system }
 
@@ -127,3 +132,88 @@ final mockChats = <Chat>[
     ],
   ),
 ];
+
+// ─── Backend chat models (`/api/v1/chat/...`) ─────────────────────────────
+
+MsgSender _senderFrom(dynamic v) => switch (v) {
+      'specialist' => MsgSender.specialist,
+      'system' => MsgSender.system,
+      _ => MsgSender.user,
+    };
+
+/// A message as returned by the backend.
+class ApiMessage {
+  final int id;
+  final MsgSender sender;
+  final String text;
+  final bool isRead;
+  final DateTime sentAt;
+  const ApiMessage({
+    required this.id,
+    required this.sender,
+    required this.text,
+    required this.isRead,
+    required this.sentAt,
+  });
+
+  factory ApiMessage.fromJson(Map<String, dynamic> m) => ApiMessage(
+        id: (m['id'] as num).toInt(),
+        sender: _senderFrom(m['sender']),
+        text: (m['text'] ?? '') as String,
+        isRead: (m['is_read'] ?? true) as bool,
+        sentAt: DateTime.tryParse('${m['created_at']}')?.toLocal() ??
+            DateTime.now(),
+      );
+}
+
+/// A conversation (thread) with its specialist + last-message preview.
+class ApiConversation {
+  final int id;
+  final String specialistId;
+  final String specialistName;
+  final String specialistInitials;
+  final String title;
+  final List<Color> gradient;
+  final String? lastText;
+  final MsgSender? lastSender;
+  final int unread;
+  final DateTime updatedAt;
+  const ApiConversation({
+    required this.id,
+    required this.specialistId,
+    required this.specialistName,
+    required this.specialistInitials,
+    required this.title,
+    required this.gradient,
+    required this.lastText,
+    required this.lastSender,
+    required this.unread,
+    required this.updatedAt,
+  });
+
+  factory ApiConversation.fromJson(Map<String, dynamic> m) {
+    final sp = (m['specialist'] ?? const {}) as Map<String, dynamic>;
+    final fn = (sp['first_name'] ?? '') as String;
+    final ln = (sp['last_name'] ?? '') as String;
+    final grad = ((sp['avatar_gradient'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList();
+    final last = m['last_message'] as Map<String, dynamic>?;
+    return ApiConversation(
+      id: (m['id'] as num).toInt(),
+      specialistId: '${sp['id'] ?? ''}',
+      specialistName: '$fn $ln'.trim(),
+      specialistInitials:
+          (fn.isNotEmpty ? fn[0] : '') + (ln.isNotEmpty ? ln[0] : ''),
+      title: (sp['title'] ?? '') as String,
+      gradient: grad.length >= 2
+          ? grad.map(hexToColor).toList()
+          : const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
+      lastText: last?['text'] as String?,
+      lastSender: last == null ? null : _senderFrom(last['sender']),
+      unread: (m['unread_count'] as num?)?.toInt() ?? 0,
+      updatedAt: DateTime.tryParse('${m['updated_at']}')?.toLocal() ??
+          DateTime.now(),
+    );
+  }
+}
