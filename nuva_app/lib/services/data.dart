@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/community.dart';
 import '../models/specialist.dart';
 import 'auth_service.dart';
+import 'backend_auth.dart' show apiClientProvider;
 import 'db_service.dart';
 
 /// Shared service singletons.
@@ -17,16 +18,38 @@ final authStateProvider = StreamProvider<AuthState?>((ref) {
   return stream ?? Stream<AuthState?>.value(null);
 });
 
-/// Specialists — from Supabase, falling back to the bundled mock catalog when
-/// the backend is off, empty, or errors. Always resolves to a non-empty list.
+/// Specialists — from the Django backend (`/api/v1/specialists`), falling back
+/// to the bundled mock catalog when the backend is unreachable. Non-empty list.
 final specialistsProvider = FutureProvider<List<Specialist>>((ref) async {
-  final db = ref.watch(dbProvider);
+  final api = ref.watch(apiClientProvider);
   try {
-    final rows = await db.fetchSpecialists();
+    final rows = await api.getList('specialists/');
     if (rows.isEmpty) return specialistCatalog;
-    return rows.map(Specialist.fromMap).toList();
+    return rows
+        .map((m) => Specialist.fromMap(m as Map<String, dynamic>))
+        .toList();
   } catch (_) {
     return specialistCatalog;
+  }
+});
+
+/// Full specialist (with education + reviews) from the backend detail endpoint;
+/// falls back to the list item / mock.
+final specialistDetailProvider =
+    FutureProvider.family<Specialist, String>((ref, id) async {
+  final api = ref.watch(apiClientProvider);
+  try {
+    final m = await api.get('specialists/$id');
+    return Specialist.fromMap(m);
+  } catch (_) {
+    final list = await ref.watch(specialistsProvider.future);
+    final hit = list.where((s) => s.id == id).toList();
+    if (hit.isNotEmpty) return hit.first;
+    try {
+      return specialistCatalog.byId(id);
+    } catch (_) {
+      return list.isNotEmpty ? list.first : specialistCatalog.first;
+    }
   }
 });
 

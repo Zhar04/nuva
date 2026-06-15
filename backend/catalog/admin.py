@@ -1,0 +1,41 @@
+from django.contrib import admin
+
+from .models import Education, Review, Specialist
+
+
+class EducationInline(admin.TabularInline):
+    model = Education
+    extra = 1
+
+
+class ReviewInline(admin.TabularInline):
+    model = Review
+    extra = 0
+
+
+@admin.register(Specialist)
+class SpecialistAdmin(admin.ModelAdmin):
+    list_display = (
+        "first_name", "last_name", "title", "session_price_kzt",
+        "rating", "review_count", "is_verified", "is_active",
+    )
+    list_filter = ("is_verified", "is_active")
+    search_fields = ("first_name", "last_name", "title")
+    inlines = [EducationInline, ReviewInline]
+    fieldsets = (
+        (None, {"fields": ("first_name", "last_name", "title", "about")}),
+        ("Профиль", {"fields": (
+            "years_experience", "languages", "approaches", "works_with",
+            "session_price_kzt", "avatar_gradient", "whatsapp",
+        )}),
+        ("Статус", {"fields": (
+            "rating", "review_count", "is_verified", "is_active",
+        )}),
+    )
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ("specialist", "author_alias", "rating", "created_at")
+    list_filter = ("rating",)
+    search_fields = ("author_alias", "text")

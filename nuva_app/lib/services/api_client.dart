@@ -23,6 +23,23 @@ class ApiClient {
   Future<Map<String, dynamic>> get(String path, {String? token}) async =>
       _decode(await http.get(_u(path), headers: _headers(token)));
 
+  /// GET that returns a JSON list (or the `results` of a paginated response).
+  Future<List<dynamic>> getList(String path, {String? token}) async {
+    final res = await http.get(_u(path), headers: _headers(token));
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    final decoded =
+        res.body.isEmpty ? const [] : jsonDecode(utf8.decode(res.bodyBytes));
+    if (!ok) {
+      throw ApiException(
+          res.statusCode, decoded is Map<String, dynamic> ? decoded : {});
+    }
+    if (decoded is List) return decoded;
+    if (decoded is Map && decoded['results'] is List) {
+      return decoded['results'] as List;
+    }
+    return const [];
+  }
+
   Future<Map<String, dynamic>> patch(String path, Map<String, dynamic> body,
           {String? token}) async =>
       _decode(await http.patch(_u(path),

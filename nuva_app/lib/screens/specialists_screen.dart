@@ -211,18 +211,20 @@ class SpecialistDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(ref);
     final t = context.nuva;
+    final detail = ref.watch(specialistDetailProvider(id)).valueOrNull;
     final list =
         ref.watch(specialistsProvider).valueOrNull ?? specialistCatalog;
-    final sp = list.firstWhere(
-      (e) => e.id == id,
-      orElse: () {
-        try {
-          return specialistCatalog.byId(id);
-        } catch (_) {
-          return list.isNotEmpty ? list.first : specialistCatalog.first;
-        }
-      },
-    );
+    final sp = detail ??
+        list.firstWhere(
+          (e) => e.id == id,
+          orElse: () {
+            try {
+              return specialistCatalog.byId(id);
+            } catch (_) {
+              return list.isNotEmpty ? list.first : specialistCatalog.first;
+            }
+          },
+        );
 
     return Scaffold(
       body: GlassBackdrop(
