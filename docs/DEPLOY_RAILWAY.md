@@ -103,6 +103,9 @@ Or use Railway's web shell on the service. Then log in at
   Postgres `DATABASE_URL` in Railway.
 - **Free tier:** Railway's trial/credits cover a small service + Postgres. If the
   service sleeps, the first request after idle is slow — that's expected.
-- **Claude AI intake (next sprint):** add `ANTHROPIC_API_KEY` (and optionally
-  `CLAUDE_PROXY_URL` on the app) once you have a key. The code degrades gracefully
-  without it.
+- **AI navigator (Groq):** specialist matching (`/api/v1/ai/match/`) is rule-based
+  and always works. Basic Q&A (`/api/v1/ai/ask/`) is proxied to Groq — add
+  `GROQ_API_KEY` (free, no card, from <https://console.groq.com>) as a Railway
+  variable to enable real answers; without it the endpoint returns a safe canned
+  reply. Optional `GROQ_MODEL` (default `llama-3.3-70b-versatile`). Crisis input
+  is always short-circuited to emergency resources and never sent to the model.

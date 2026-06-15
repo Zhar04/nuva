@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "chat",
     "community",
     "journal",
+    "ai",
 ]
 
 MIDDLEWARE = [
