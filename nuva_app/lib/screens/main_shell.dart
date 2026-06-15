@@ -1,4 +1,5 @@
-import 'dart:ui' show ImageFilter;
+import 'dart:math' show pi, sin;
+import 'dart:ui' show ImageFilter, lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,7 +43,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: _FloatingNavBar(
+            child: _LiquidNavBar(
               index: _idx,
               items: [
                 (Icons.home_rounded, s.tabHome),
@@ -60,22 +61,59 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 }
 
-/// Floating Liquid-Glass tab bar (iOS-26 / App Store style): a frosted capsule
-/// detached from the bottom edge; the active tab expands into a gradient pill
-/// showing icon + label, inactive tabs are icon-only.
-class _FloatingNavBar extends StatelessWidget {
+/// Liquid-Morph tab bar (iOS-26 Liquid Glass feel, pure Flutter so it works on
+/// web/Android/iOS). A single frosted-glass blob slides AND stretches between
+/// tabs with spring physics; icons + labels brighten/scale as the blob arrives.
+class _LiquidNavBar extends StatefulWidget {
   final int index;
   final List<(IconData, String)> items;
   final ValueChanged<int> onTap;
-  const _FloatingNavBar({
+  const _LiquidNavBar({
     required this.index,
     required this.items,
     required this.onTap,
   });
 
   @override
+  State<_LiquidNavBar> createState() => _LiquidNavBarState();
+}
+
+class _LiquidNavBarState extends State<_LiquidNavBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late double _from;
+  late double _to;
+
+  @override
+  void initState() {
+    super.initState();
+    _from = _to = widget.index.toDouble();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    )..value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant _LiquidNavBar old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) {
+      _from = _to;
+      _to = widget.index.toDouble();
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = context.nuva;
+    final n = widget.items.length;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -84,86 +122,127 @@ class _FloatingNavBar extends StatelessWidget {
         10 + MediaQuery.viewPaddingOf(context).bottom,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(34),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
           child: Container(
+            height: 66,
             decoration: BoxDecoration(
-              color: t.surface.withValues(alpha: t.dark ? 0.55 : 0.72),
-              borderRadius: BorderRadius.circular(999),
+              color: t.surface.withValues(alpha: t.dark ? 0.50 : 0.70),
+              borderRadius: BorderRadius.circular(34),
               border: Border.all(
                 color:
-                    t.dark ? const Color(0x40FFFFFF) : const Color(0x55FFFFFF),
+                    t.dark ? const Color(0x40FFFFFF) : const Color(0x66FFFFFF),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: t.dark ? 0.40 : 0.16),
-                  blurRadius: 28,
+                  color: Colors.black.withValues(alpha: t.dark ? 0.42 : 0.16),
+                  blurRadius: 30,
                   offset: const Offset(0, 12),
                 ),
                 BoxShadow(
-                  color: t.blue.withValues(alpha: t.dark ? 0.20 : 0.12),
-                  blurRadius: 24,
+                  color: t.blue.withValues(alpha: t.dark ? 0.22 : 0.12),
+                  blurRadius: 26,
                   spreadRadius: -6,
                   offset: const Offset(0, 10),
                 ),
               ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(items.length, (i) {
-                final on = i == index;
-                final item = items[i];
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: on ? 16 : 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: on
-                          ? LinearGradient(colors: [t.blue, t.blueDeep])
-                          : null,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: on
-                          ? [
-                              BoxShadow(
-                                color: t.blue.withValues(alpha: 0.45),
-                                blurRadius: 14,
-                                offset: const Offset(0, 5),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+            // Specular top-edge highlight (the glassy sheen).
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(34),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: t.dark ? 0.18 : 0.50),
+                  Colors.white.withValues(alpha: 0.0),
+                ],
+                stops: const [0.0, 0.4],
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (ctx, c) {
+                final slot = c.maxWidth / n;
+                return AnimatedBuilder(
+                  animation: _c,
+                  builder: (_, __) {
+                    final tv = Curves.easeOutCubic.transform(_c.value);
+                    final pos = lerpDouble(_from, _to, tv) ?? _to;
+                    final dist = (_to - _from).abs().clamp(0.0, 1.0);
+                    // Gooey stretch: blob elongates mid-travel, settles at rest.
+                    final stretch = sin(tv * pi) * slot * 0.45 * dist;
+                    final pillW = (slot - 14) + stretch;
+                    final centerX = slot * pos + slot / 2;
+                    final pillLeft = centerX - pillW / 2;
+                    return Stack(
                       children: [
-                        Icon(
-                          item.$1,
-                          size: 22,
-                          color: on ? Colors.white : t.textTer,
-                        ),
-                        if (on) ...[
-                          const SizedBox(width: 7),
-                          Text(
-                            item.$2,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
+                        Positioned(
+                          left: pillLeft,
+                          top: 8,
+                          bottom: 8,
+                          width: pillW,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [t.blue, t.blueDeep],
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: t.blue.withValues(alpha: 0.55),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
+                        Row(
+                          children: List.generate(n, (i) {
+                            final item = widget.items[i];
+                            final act =
+                                (1 - (pos - i).abs()).clamp(0.0, 1.0).toDouble();
+                            final color =
+                                Color.lerp(t.textTer, Colors.white, act)!;
+                            return SizedBox(
+                              width: slot,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => widget.onTap(i),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Transform.scale(
+                                      scale: 1 + 0.14 * act,
+                                      child: Icon(item.$1, size: 21, color: color),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      item.$2,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 9,
+                                        fontWeight: act > 0.5
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 );
-              }),
+              },
             ),
           ),
         ),
