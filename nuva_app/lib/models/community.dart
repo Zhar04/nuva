@@ -21,6 +21,8 @@ class CommunityPost {
   final int replies;
   final bool isSupported; // marked as supportive by community
   final bool liked; // whether the current user liked this post
+  final String? topReplyText; // newest reply, for the threaded feed preview
+  final bool topReplyFromSpecialist;
   const CommunityPost({
     required this.id,
     required this.author,
@@ -31,6 +33,8 @@ class CommunityPost {
     required this.replies,
     this.isSupported = false,
     this.liked = false,
+    this.topReplyText,
+    this.topReplyFromSpecialist = false,
   });
 
   /// Build from a Supabase `community_posts` row. The feed query selects
@@ -58,6 +62,11 @@ class CommunityPost {
       replies: replies,
       isSupported: (m['is_supported'] as bool?) ?? false,
       liked: (m['liked'] as bool?) ?? false,
+      topReplyText: (m['top_reply'] as Map<String, dynamic>?)?['text'] as String?,
+      topReplyFromSpecialist:
+          ((m['top_reply'] as Map<String, dynamic>?)?['from_specialist']
+                  as bool?) ??
+              false,
     );
   }
 }

@@ -14,6 +14,14 @@ class LikeButton extends ConsumerWidget {
   final bool baseLiked;
   final int baseCount;
   final double iconSize;
+
+  /// Colour when liked. Defaults to danger (red heart); the community feed
+  /// passes teal for the "Поддержать" treatment.
+  final Color? activeColor;
+
+  /// Optional trailing label after the count, e.g. "· Поддержать".
+  final String? label;
+
   const LikeButton({
     super.key,
     required this.likeKey,
@@ -21,6 +29,8 @@ class LikeButton extends ConsumerWidget {
     required this.baseLiked,
     required this.baseCount,
     this.iconSize = 16,
+    this.activeColor,
+    this.label,
   });
 
   @override
@@ -29,6 +39,7 @@ class LikeButton extends ConsumerWidget {
     final override = ref.watch(likeProvider)[likeKey];
     final liked = override?.liked ?? baseLiked;
     final count = override?.count ?? baseCount;
+    final active = activeColor ?? t.danger;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () =>
@@ -39,15 +50,17 @@ class LikeButton extends ConsumerWidget {
           Icon(
             liked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
             size: iconSize,
-            color: liked ? t.danger : t.textSec,
+            color: liked ? active : t.textSec,
           ),
-          const SizedBox(width: 5),
-          Text('$count',
-              style: TextStyle(
-                color: t.textSec,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-              )),
+          const SizedBox(width: 6),
+          Text(
+            label == null ? '$count' : '$count · $label',
+            style: TextStyle(
+              color: liked ? active : t.textSec,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

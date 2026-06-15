@@ -27,16 +27,17 @@ class PostSerializer(serializers.ModelSerializer):
         source="replies.count", read_only=True
     )
     liked = serializers.SerializerMethodField()
+    top_reply = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = (
             "id", "author_alias", "text", "tags", "likes_count",
-            "replies_count", "is_supported", "liked", "created_at",
+            "replies_count", "is_supported", "liked", "top_reply", "created_at",
         )
         read_only_fields = (
             "id", "author_alias", "likes_count", "replies_count",
-            "is_supported", "liked", "created_at",
+            "is_supported", "liked", "top_reply", "created_at",
         )
 
     def get_liked(self, obj):
@@ -45,3 +46,14 @@ class PostSerializer(serializers.ModelSerializer):
         if user is None or not user.is_authenticated:
             return False
         return obj.likes.filter(user=user).exists()
+
+    def get_top_reply(self, obj):
+        # Most recent reply, used for the threaded preview in the feed.
+        reply = obj.replies.order_by("-created_at").first()
+        if reply is None:
+            return None
+        return {
+            "author_alias": reply.author_alias,
+            "text": reply.text,
+            "from_specialist": reply.from_specialist,
+        }

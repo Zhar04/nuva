@@ -186,12 +186,44 @@ class _PostHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post.author.alias,
-                        style: TextStyle(
-                          color: t.text,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                        )),
+                    Row(
+                      children: [
+                        Text('Анонимно',
+                            style: TextStyle(
+                              color: t.text,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                            )),
+                        const SizedBox(width: 7),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: t.glassBgUp,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.lock_outline_rounded,
+                                  size: 10, color: t.textTer),
+                              const SizedBox(width: 3),
+                              Builder(builder: (_) {
+                                final a = post.author.alias;
+                                final i = a.indexOf('#');
+                                return Text(i >= 0 ? a.substring(i) : 'ID',
+                                    style: TextStyle(
+                                      color: t.textTer,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                    ));
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
                     Text(post.timeLabel,
                         style: TextStyle(color: t.textTer, fontSize: 11)),
                   ],
@@ -267,7 +299,7 @@ class _ReplyCard extends ConsumerWidget {
                   fontSize: 12,
                 ),
                 const SizedBox(width: 8),
-                Text(reply.author.alias,
+                Text('Анонимно',
                     style: TextStyle(
                       color: t.text,
                       fontSize: 13,
