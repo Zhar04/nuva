@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n/strings.dart';
 import '../models/chat.dart';
@@ -123,24 +122,6 @@ class ProfileScreen extends ConsumerWidget {
                     s.signOut,
                     style: TextStyle(color: t.danger, fontSize: 14),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.remove('onboarded');
-                    await ref.read(backendAuthProvider.notifier).logout();
-                    await ref
-                        .read(userProfileProvider.notifier)
-                        .save(const UserProfile());
-                    if (context.mounted) context.go('/');
-                  },
-                  icon: Icon(Icons.restart_alt_rounded,
-                      color: t.textSec, size: 16),
-                  label: Text('Сбросить онбординг (для теста)',
-                      style: TextStyle(color: t.textSec, fontSize: 13)),
                 ),
               ),
               const SizedBox(height: 8),

@@ -57,11 +57,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         await auth.register(
             email: email, password: password, name: _name.text.trim());
         _snack('Аккаунт создан');
+        if (mounted) context.go('/role'); // new user → onboarding
       } else {
         await auth.login(email: email, password: password);
         _snack('С возвращением!');
+        if (mounted) context.go('/home');
       }
-      if (mounted) context.go('/home');
     } on ApiException catch (e) {
       _snack(e.message, error: true);
     } catch (_) {
@@ -74,9 +75,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
+    final authState = ref.watch(backendAuthProvider);
 
-    // Already signed in (e.g. token restored) → straight to the app.
-    if (ref.watch(backendAuthProvider).isSignedIn) {
+    // While restoring a saved session, show a loader (no login-form flash).
+    if (authState.restoring) {
+      return const Scaffold(
+          body: Center(child: CircularProgressIndicator()));
+    }
+    // Already signed in (token restored) → straight to the app.
+    if (authState.isSignedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/home');
       });

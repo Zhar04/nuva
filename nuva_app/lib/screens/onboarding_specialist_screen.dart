@@ -89,7 +89,7 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
       const SnackBar(
           content: Text('Заявка отправлена на проверку. Мы свяжемся с вами.')),
     );
-    context.go('/auth?mode=register');
+    context.go('/home');
   }
 
   @override

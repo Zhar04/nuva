@@ -27,7 +27,7 @@ Future<GoRouter> buildRouter() async {
   final onboarded = prefs.getBool('onboarded') ?? false;
 
   return GoRouter(
-    initialLocation: onboarded ? '/home' : '/',
+    initialLocation: onboarded ? '/auth' : '/',
     routes: [
       GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
       GoRoute(
@@ -67,11 +67,7 @@ Future<GoRouter> buildRouter() async {
       GoRoute(path: '/profile', builder: (_, __) => const MainShell(initialTab: 4)),
 
       // Detail screens (pushed on top).
-      GoRoute(
-        path: '/intake',
-        builder: (_, st) => IntakeScreen(
-            onboarding: st.uri.queryParameters['onboarding'] == '1'),
-      ),
+      GoRoute(path: '/intake', builder: (_, __) => const IntakeScreen()),
 
       GoRoute(
         path: '/specialists/:id',

@@ -26,9 +26,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _finish() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarded', true);
+    await prefs.setBool('onboarded', true); // intro slides seen (once per device)
     if (!mounted) return;
-    context.go('/role');
+    context.go('/auth');
   }
 
   @override

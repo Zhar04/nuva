@@ -10,10 +10,7 @@ import '../widgets/glass.dart';
 final _claudeProvider = Provider((_) => ClaudeService());
 
 class IntakeScreen extends ConsumerStatefulWidget {
-  const IntakeScreen({super.key, this.onboarding = false});
-
-  /// When reached as an onboarding step, exits lead to registration (/auth).
-  final bool onboarding;
+  const IntakeScreen({super.key});
 
   @override
   ConsumerState<IntakeScreen> createState() => _IntakeScreenState();
@@ -45,8 +42,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
     super.dispose();
   }
 
-  void _skip() =>
-      context.go(widget.onboarding ? '/auth?mode=register' : '/home');
+  void _skip() => context.go('/home');
 
   bool _isSkipCommand(String text) {
     final c = text.toLowerCase();
@@ -142,9 +138,7 @@ class _IntakeScreenState extends ConsumerState<IntakeScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                   child: PrimaryButton(
                     label: s.findSpecialist,
-                    onPressed: () => context.go(widget.onboarding
-                        ? '/auth?mode=register'
-                        : '/specialists'),
+                    onPressed: () => context.go('/specialists'),
                   ),
                 )
               else
