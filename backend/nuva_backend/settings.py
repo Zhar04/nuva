@@ -30,9 +30,23 @@ ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0")
 
 # Railway provides a public domain; trust it for CSRF/host.
 RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS")
 if RAILWAY_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_DOMAIN)
-    CSRF_TRUSTED_ORIGINS = [f"https://{RAILWAY_DOMAIN}"]
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RAILWAY_DOMAIN}")
+
+# ─── Production hardening (active when DEBUG is off) ───────────────
+# Railway terminates TLS at the edge and forwards X-Forwarded-Proto.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 2592000  # 30 days
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 INSTALLED_APPS = [
     "django.contrib.admin",
