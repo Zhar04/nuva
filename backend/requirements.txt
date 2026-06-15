@@ -1,0 +1,10 @@
+Django>=5.2,<5.3
+djangorestframework>=3.16
+djangorestframework-simplejwt>=5.5
+django-cors-headers>=4.9
+dj-database-url>=3.1
+python-dotenv>=1.1
+whitenoise>=6.12
+# Production / Railway (Postgres + WSGI server). Linux wheels available there.
+gunicorn>=23.0
+psycopg[binary]>=3.2
