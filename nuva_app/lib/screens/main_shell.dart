@@ -183,7 +183,7 @@ class _LiquidNavBarState extends State<_LiquidNavBar>
                     final dist = (_to - _from).abs().clamp(0.0, 1.0);
                     // Gooey stretch: blob elongates mid-travel, settles at rest.
                     final stretch = sin(tv * pi) * slot * 0.45 * dist;
-                    final pillW = (slot - 14) + stretch;
+                    final pillW = (slot - 10) + stretch;
                     final centerX = slot * pos + slot / 2;
                     final pillLeft = centerX - pillW / 2;
                     return Stack(
@@ -231,16 +231,22 @@ class _LiquidNavBarState extends State<_LiquidNavBar>
                                       child: Icon(item.$1, size: 21, color: color),
                                     ),
                                     const SizedBox(height: 3),
-                                    Text(
-                                      item.$2,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: color,
-                                        fontSize: 9,
-                                        fontWeight: act > 0.5
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6),
+                                      child: Text(
+                                        item.$2,
+                                        maxLines: 1,
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: color,
+                                          fontSize: 8.5,
+                                          letterSpacing: -0.2,
+                                          fontWeight: act > 0.5
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                        ),
                                       ),
                                     ),
                                   ],
