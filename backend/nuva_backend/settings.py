@@ -124,6 +124,9 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Emit DecimalField (e.g. Specialist.rating) as a JSON number, not a string,
+    # so mobile clients can parse it without a string→num crash.
+    "COERCE_DECIMAL_TO_STRING": False,
     "DEFAULT_THROTTLE_CLASSES": (
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",

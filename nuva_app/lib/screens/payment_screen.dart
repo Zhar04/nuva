@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
+import '../services/api_client.dart';
 import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
@@ -59,14 +60,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         token: token,
       );
       ref.invalidate(bookingsProvider);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _processing = false);
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      final msg = e is ApiException
+          ? 'Ошибка ${e.status}: ${e.message}'
+          : token == null
+              ? 'Нет входа в аккаунт (токен пуст). Войдите заново.'
+              : 'Сеть/CORS: $e';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: context.nuva.danger,
-        content: const Text(
-            'Не удалось создать запись. Войдите и попробуйте снова.',
-            style: TextStyle(color: Colors.white)),
+        duration: const Duration(seconds: 8),
+        content: Text(msg, style: const TextStyle(color: Colors.white)),
       ));
       return;
     }

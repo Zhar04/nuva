@@ -55,19 +55,24 @@ class Specialist {
   factory Specialist.fromMap(Map<String, dynamic> m) {
     List<String> strList(dynamic v) =>
         (v as List?)?.map((e) => e.toString()).toList() ?? const [];
+    // DRF can serialize numbers as strings (DecimalField -> "4.9"), so parse
+    // defensively: a single bad cast must never crash us into the mock catalog.
+    int toInt(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
+    double toDouble(dynamic v) =>
+        v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
     final grad = strList(m['avatar_gradient']);
     return Specialist(
       id: m['id'].toString(),
       firstName: (m['first_name'] ?? '') as String,
       lastName: (m['last_name'] ?? '') as String,
       title: (m['title'] ?? '') as String,
-      yearsExperience: (m['years_experience'] as num?)?.toInt() ?? 0,
+      yearsExperience: toInt(m['years_experience']),
       languages: strList(m['languages']),
       approaches: strList(m['approaches']),
       worksWith: strList(m['works_with']),
-      sessionPriceKzt: (m['session_price_kzt'] as num?)?.toInt() ?? 0,
-      rating: (m['rating'] as num?)?.toDouble() ?? 0,
-      reviewCount: (m['review_count'] as num?)?.toInt() ?? 0,
+      sessionPriceKzt: toInt(m['session_price_kzt']),
+      rating: toDouble(m['rating']),
+      reviewCount: toInt(m['review_count']),
       about: (m['about'] ?? '') as String,
       education: ((m['education'] as List?) ?? const [])
           .map((e) => Education.fromMap(e as Map<String, dynamic>))
