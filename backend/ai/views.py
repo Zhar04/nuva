@@ -167,12 +167,24 @@ class AskView(APIView):
         model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
         if not key:
             return Response(
-                {"reply": FALLBACK_REPLY, "crisis": False, "degraded": True}
+                {"reply": FALLBACK_REPLY, "crisis": False, "degraded": True,
+                 "reason": "no_key"}
             )
         try:
             reply = _groq_chat(message, key, model)
-            return Response({"reply": reply, "crisis": False})
-        except (urllib.error.URLError, KeyError, ValueError, TimeoutError):
+            return Response({"reply": reply, "crisis": False, "model": model})
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = e.read().decode("utf-8", "ignore")[:300]
+            except Exception:
+                pass
             return Response(
-                {"reply": FALLBACK_REPLY, "crisis": False, "degraded": True}
+                {"reply": FALLBACK_REPLY, "crisis": False, "degraded": True,
+                 "reason": f"http_{e.code}", "detail": body}
+            )
+        except Exception as e:  # noqa: BLE001 — diagnostic surface
+            return Response(
+                {"reply": FALLBACK_REPLY, "crisis": False, "degraded": True,
+                 "reason": type(e).__name__, "detail": str(e)[:200]}
             )
