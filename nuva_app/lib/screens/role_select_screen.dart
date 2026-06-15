@@ -56,13 +56,15 @@ class RoleSelectScreen extends ConsumerWidget {
                   onTap: () => pick(UserRole.psychologist, '/onboarding/specialist'),
                 ),
                 const Spacer(),
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.go('/home'),
-                    child: Text('Пропустить пока',
-                        style: TextStyle(color: t.textSec, fontSize: 14)),
-                  ),
+                Text('Уже есть аккаунт?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: t.textSec, fontSize: 13.5)),
+                const SizedBox(height: 10),
+                PrimaryButton(
+                  label: 'Войти',
+                  onPressed: () => context.go('/auth?mode=login'),
                 ),
+                const SizedBox(height: 6),
               ],
             ),
           ),

@@ -78,7 +78,7 @@ class _State extends ConsumerState<OnboardingUserScreen> {
           mbti: _mbti,
           onboarded: true,
         );
-    if (mounted) context.go('/intake');
+    if (mounted) context.go('/intake?onboarding=1');
   }
 
   @override

@@ -72,7 +72,7 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.account_circle_outlined,
                   label: s.signIn,
-                  onTap: () => context.push('/auth'),
+                  onTap: () => context.push('/auth?mode=login'),
                 ),
                 _MenuItem(
                   icon: Icons.language_rounded,

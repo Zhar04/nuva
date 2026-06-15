@@ -10,7 +10,10 @@ import '../widgets/glass.dart';
 /// Email + password sign-in / registration against the Nuva backend (JWT).
 /// Non-blocking: "Продолжить без аккаунта" keeps the app usable.
 class AuthScreen extends ConsumerStatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.initialRegister = false});
+
+  /// Start in registration mode (from onboarding) vs login mode (existing user).
+  final bool initialRegister;
 
   @override
   ConsumerState<AuthScreen> createState() => _AuthScreenState();
@@ -20,7 +23,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _name = TextEditingController();
-  bool _register = false;
+  late bool _register = widget.initialRegister;
   bool _busy = false;
 
   @override
@@ -71,6 +74,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
+
+    // Already signed in (e.g. token restored) → straight to the app.
+    if (ref.watch(backendAuthProvider).isSignedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/home');
+      });
+    }
 
     InputDecoration deco(String hint, IconData icon) => InputDecoration(
           hintText: hint,
@@ -182,12 +192,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.w600),
                   ),
-                ),
-                const SizedBox(height: 4),
-                TextButton(
-                  onPressed: _busy ? null : () => context.go('/home'),
-                  child: Text('Продолжить без аккаунта',
-                      style: TextStyle(color: t.textSec, fontSize: 13.5)),
                 ),
                 if (_busy)
                   const Padding(

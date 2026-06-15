@@ -30,7 +30,11 @@ Future<GoRouter> buildRouter() async {
     initialLocation: onboarded ? '/home' : '/',
     routes: [
       GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
-      GoRoute(path: '/auth', builder: (_, __) => const AuthScreen()),
+      GoRoute(
+        path: '/auth',
+        builder: (_, st) => AuthScreen(
+            initialRegister: st.uri.queryParameters['mode'] == 'register'),
+      ),
 
       // Registration + onboarding pipelines (Epic 3)
       GoRoute(path: '/role', builder: (_, __) => const RoleSelectScreen()),
@@ -63,7 +67,11 @@ Future<GoRouter> buildRouter() async {
       GoRoute(path: '/profile', builder: (_, __) => const MainShell(initialTab: 4)),
 
       // Detail screens (pushed on top).
-      GoRoute(path: '/intake', builder: (_, __) => const IntakeScreen()),
+      GoRoute(
+        path: '/intake',
+        builder: (_, st) => IntakeScreen(
+            onboarding: st.uri.queryParameters['onboarding'] == '1'),
+      ),
 
       GoRoute(
         path: '/specialists/:id',
