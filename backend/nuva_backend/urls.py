@@ -14,6 +14,7 @@ urlpatterns = [
     path("healthz", healthz),
     path("api/v1/auth/", include("accounts.urls")),
     path("api/v1/specialists/", include("catalog.urls")),
+    path("api/v1/bookings/", include("booking.urls")),
 ]
 
 # Branding for the admin (your "админка").

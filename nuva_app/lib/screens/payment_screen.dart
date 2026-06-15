@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
+import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -43,18 +44,23 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   Future<void> _pay() async {
     setState(() => _processing = true);
     final d = widget.draft;
-    // Persist a pending booking (best-effort). Real charging must be driven by a
-    // server-side payment webhook — this mock just records the intent.
+    // Create a real booking on the backend (best-effort). Real charging must be
+    // driven by a server-side payment webhook — this mock just records intent.
     try {
-      await ref.read(dbProvider).createBooking(
-            specialistId: d.specialist.id,
-            startsAt: DateTime.parse('${d.dateIso}T${d.time}:00'),
-            format: d.format.name,
-            priceKzt: d.specialist.sessionPriceKzt,
-          );
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).post(
+        'bookings/',
+        {
+          'specialist': int.parse(d.specialist.id),
+          'starts_at': '${d.dateIso}T${d.time}:00',
+          'format': d.format.name,
+          'price_kzt': d.specialist.sessionPriceKzt,
+        },
+        token: token,
+      );
+      ref.invalidate(bookingsProvider);
     } catch (_) {
-      // Needs an authenticated session + a real specialist row; the demo
-      // success flow continues regardless.
+      // Needs sign-in + a real specialist id; success flow continues regardless.
     }
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!mounted) return;

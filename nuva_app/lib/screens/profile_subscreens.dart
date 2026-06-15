@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../models/booking.dart';
 import '../models/specialist.dart';
+import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
@@ -54,74 +58,114 @@ class _Sub extends StatelessWidget {
   }
 }
 
-class SessionsScreen extends StatelessWidget {
+class SessionsScreen extends ConsumerWidget {
   const SessionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.nuva;
-    final sp = specialistCatalog;
-    Widget session(Specialist s, String when, bool upcoming) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: GlassCard(
-            elevated: true,
-            radius: 18,
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                GradientAvatar(
-                    initials: s.initials,
-                    gradient: s.avatarGradient,
-                    size: 46,
-                    radius: 14,
-                    fontSize: 17),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(s.fullName,
-                          style: TextStyle(
-                              color: t.text,
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w600)),
-                      Text(when,
-                          style: TextStyle(color: t.textSec, fontSize: 12)),
-                    ],
-                  ),
+    final async = ref.watch(bookingsProvider);
+
+    Widget card(AppBooking b) {
+      final when = DateFormat('d MMMM · HH:mm', 'ru').format(b.startsAt);
+      final up = b.isUpcoming;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: GlassCard(
+          elevated: true,
+          radius: 18,
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              GradientAvatar(
+                  initials:
+                      b.specialistInitials.isEmpty ? 'А' : b.specialistInitials,
+                  gradient: b.gradient,
+                  size: 46,
+                  radius: 14,
+                  fontSize: 17),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(b.specialistName,
+                        style: TextStyle(
+                            color: t.text,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600)),
+                    Text('$when · ${b.formatLabel}',
+                        style: TextStyle(color: t.textSec, fontSize: 12)),
+                  ],
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: upcoming
-                        ? t.blue.withValues(alpha: 0.15)
-                        : t.teal.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(upcoming ? 'Скоро' : 'Завершена',
-                      style: TextStyle(
-                          color: upcoming ? t.blue : t.teal,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700)),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (up ? t.blue : t.teal).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
+                child: Text(up ? 'Скоро' : b.statusLabel,
+                    style: TextStyle(
+                        color: up ? t.blue : t.teal,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
           ),
-        );
+        ),
+      );
+    }
 
     return _Sub(
       title: 'Мои сессии',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionLabel(label: 'Предстоящие'),
-          session(sp[0], 'Завтра · 14:00 · Видео', true),
-          const SizedBox(height: 14),
-          SectionLabel(label: 'Прошедшие'),
-          session(sp[1], '3 июня · 18:00 · Видео', false),
-          session(sp[2], '27 мая · 12:00 · Чат', false),
-        ],
+      child: async.when(
+        loading: () => const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(child: CircularProgressIndicator())),
+        error: (_, __) => Padding(
+            padding: const EdgeInsets.only(top: 40),
+            child: Text('Не удалось загрузить сессии',
+                style: TextStyle(color: t.textSec))),
+        data: (bookings) {
+          if (bookings.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 40),
+              child: Column(
+                children: [
+                  Icon(Icons.event_busy_rounded, color: t.textTer, size: 48),
+                  const SizedBox(height: 12),
+                  Text('Пока нет записей',
+                      style: TextStyle(
+                          color: t.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('Запишитесь к специалисту — сессия появится здесь.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: t.textSec, fontSize: 13)),
+                ],
+              ),
+            );
+          }
+          final upcoming = bookings.where((b) => b.isUpcoming).toList();
+          final past = bookings.where((b) => !b.isUpcoming).toList();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (upcoming.isNotEmpty) ...[
+                SectionLabel(label: 'Предстоящие'),
+                ...upcoming.map(card),
+                const SizedBox(height: 14),
+              ],
+              if (past.isNotEmpty) ...[
+                SectionLabel(label: 'Прошедшие'),
+                ...past.map(card),
+              ],
+            ],
+          );
+        },
       ),
     );
   }

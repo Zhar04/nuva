@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/booking.dart';
 import '../models/community.dart';
 import '../models/specialist.dart';
 import 'auth_service.dart';
-import 'backend_auth.dart' show apiClientProvider;
+import 'backend_auth.dart' show apiClientProvider, backendAuthProvider;
 import 'db_service.dart';
 
 /// Shared service singletons.
@@ -68,5 +69,21 @@ final communityFeedProvider =
     return rows.map(CommunityPost.fromMap).toList();
   } catch (_) {
     return mock();
+  }
+});
+
+/// The current user's bookings from the backend (`/api/v1/bookings/`).
+final bookingsProvider = FutureProvider<List<AppBooking>>((ref) async {
+  ref.watch(backendAuthProvider); // refresh on sign-in / sign-out
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  final api = ref.watch(apiClientProvider);
+  try {
+    final rows = await api.getList('bookings/', token: token);
+    return rows
+        .map((m) => AppBooking.fromJson(m as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
   }
 });
