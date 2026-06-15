@@ -9,6 +9,7 @@ import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
+import '../widgets/like_button.dart';
 
 class CommunityPostScreen extends ConsumerStatefulWidget {
   final String postId;
@@ -216,14 +217,12 @@ class _PostHero extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.favorite_rounded, color: t.danger, size: 16),
-              const SizedBox(width: 6),
-              Text('${post.likes}',
-                  style: TextStyle(
-                    color: t.textSec,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  )),
+              LikeButton(
+                likeKey: 'post:${post.id}',
+                path: 'community/posts/${post.id}/like/',
+                baseLiked: post.liked,
+                baseCount: post.likes,
+              ),
               const SizedBox(width: 16),
               Icon(Icons.chat_bubble_outline_rounded,
                   color: t.textSec, size: 15),
@@ -300,14 +299,12 @@ class _ReplyCard extends ConsumerWidget {
             Text(reply.text,
                 style: TextStyle(color: t.text, fontSize: 13.5, height: 1.45)),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.favorite_outline_rounded,
-                    color: t.textSec, size: 14),
-                const SizedBox(width: 4),
-                Text('${reply.likes}',
-                    style: TextStyle(color: t.textSec, fontSize: 12)),
-              ],
+            LikeButton(
+              likeKey: 'reply:${reply.id}',
+              path: 'community/replies/${reply.id}/like/',
+              baseLiked: reply.liked,
+              baseCount: reply.likes,
+              iconSize: 14,
             ),
           ],
         ),

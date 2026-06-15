@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from nuva_backend.moderation import CONTACT_BLOCKED, has_contact
 
-from .models import Post, PostLike, Reply, anon_alias
+from .models import Post, PostLike, Reply, ReplyLike, anon_alias
 from .serializers import PostSerializer, ReplySerializer
 
 
@@ -102,5 +102,31 @@ class ReplyListCreateView(generics.ListCreateAPIView):
             from_specialist=getattr(request.user, "role", "") == "psychologist",
         )
         return Response(
-            ReplySerializer(reply).data, status=status.HTTP_201_CREATED
+            ReplySerializer(reply, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
         )
+
+
+class ReplyLikeView(APIView):
+    """POST toggles the current user's like on a reply."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        reply = get_object_or_404(Reply, pk=pk, post__is_visible=True)
+        like, created = ReplyLike.objects.get_or_create(
+            reply=reply, user=request.user
+        )
+        if created:
+            Reply.objects.filter(pk=reply.pk).update(
+                likes_count=F("likes_count") + 1
+            )
+            liked = True
+        else:
+            like.delete()
+            Reply.objects.filter(pk=reply.pk, likes_count__gt=0).update(
+                likes_count=F("likes_count") - 1
+            )
+            liked = False
+        reply.refresh_from_db(fields=["likes_count"])
+        return Response({"liked": liked, "likes_count": reply.likes_count})

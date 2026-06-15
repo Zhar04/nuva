@@ -55,6 +55,46 @@ final specialistDetailProvider =
   }
 });
 
+/// Optimistic like state, keyed by `"post:<id>"` / `"reply:<id>"`. Lives in one
+/// provider (not in list widgets) so it survives scroll/rebuilds, and is
+/// reconciled with the server response. Fixes the recycled-widget like bug.
+class LikeState {
+  final bool liked;
+  final int count;
+  const LikeState(this.liked, this.count);
+}
+
+class LikeNotifier extends Notifier<Map<String, LikeState>> {
+  @override
+  Map<String, LikeState> build() => const {};
+
+  Future<void> toggle(
+      String key, String path, bool curLiked, int curCount) async {
+    final nextLiked = !curLiked;
+    final optimistic =
+        LikeState(nextLiked, (curCount + (nextLiked ? 1 : -1)).clamp(0, 1 << 31));
+    state = {...state, key: optimistic};
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      final res = await ref
+          .read(apiClientProvider)
+          .post(path, const <String, dynamic>{}, token: token);
+      state = {
+        ...state,
+        key: LikeState(
+          (res['liked'] as bool?) ?? optimistic.liked,
+          (res['likes_count'] as num?)?.toInt() ?? optimistic.count,
+        ),
+      };
+    } catch (_) {
+      state = {...state, key: LikeState(curLiked, curCount)}; // revert
+    }
+  }
+}
+
+final likeProvider =
+    NotifierProvider<LikeNotifier, Map<String, LikeState>>(LikeNotifier.new);
+
 /// Community feed for a tag — from the Django backend (`/community/posts/`),
 /// falling back to mock posts when unreachable. Re-runs on auth changes.
 final communityFeedProvider =

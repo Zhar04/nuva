@@ -4,13 +4,22 @@ from .models import Post, Reply
 
 
 class ReplySerializer(serializers.ModelSerializer):
+    liked = serializers.SerializerMethodField()
+
     class Meta:
         model = Reply
         fields = (
             "id", "author_alias", "text", "from_specialist",
-            "likes_count", "created_at",
+            "likes_count", "liked", "created_at",
         )
         read_only_fields = fields
+
+    def get_liked(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return False
+        return obj.likes.filter(user=user).exists()
 
 
 class PostSerializer(serializers.ModelSerializer):

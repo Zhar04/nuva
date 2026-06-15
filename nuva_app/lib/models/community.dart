@@ -69,6 +69,7 @@ class CommunityReply {
   final String timeLabel;
   final int likes;
   final bool fromSpecialist;
+  final bool liked;
   const CommunityReply({
     required this.id,
     required this.author,
@@ -76,6 +77,7 @@ class CommunityReply {
     required this.timeLabel,
     required this.likes,
     this.fromSpecialist = false,
+    this.liked = false,
   });
 
   factory CommunityReply.fromMap(Map<String, dynamic> m) {
@@ -89,6 +91,7 @@ class CommunityReply {
       ),
       likes: (m['likes_count'] as num?)?.toInt() ?? 0,
       fromSpecialist: (m['from_specialist'] as bool?) ?? false,
+      liked: (m['liked'] as bool?) ?? false,
     );
   }
 }

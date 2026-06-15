@@ -89,3 +89,20 @@ class Reply(models.Model):
 
     def __str__(self):
         return f"{self.author_alias}: {self.text[:40]}"
+
+
+class ReplyLike(models.Model):
+    reply = models.ForeignKey(Reply, related_name="likes", on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["reply", "user"], name="uniq_reply_like"
+            )
+        ]
+        verbose_name = "Лайк ответа"
+        verbose_name_plural = "Лайки ответов"
