@@ -25,6 +25,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _name = TextEditingController();
   late bool _register = widget.initialRegister;
   bool _busy = false;
+  bool _navigating = false; // suppress the auto-redirect during a submit
 
   @override
   void dispose() {
@@ -50,6 +51,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _snack('Введите email и пароль', error: true);
       return;
     }
+    _navigating = true;
     setState(() => _busy = true);
     final auth = ref.read(backendAuthProvider.notifier);
     try {
@@ -64,8 +66,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         if (mounted) context.go('/home');
       }
     } on ApiException catch (e) {
+      _navigating = false;
       _snack(e.message, error: true);
     } catch (_) {
+      _navigating = false;
       _snack('Нет связи с сервером. Бэкенд запущен?', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -82,8 +86,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       return const Scaffold(
           body: Center(child: CircularProgressIndicator()));
     }
-    // Already signed in (token restored) → straight to the app.
-    if (authState.isSignedIn) {
+    // Returning user who arrived already signed in → straight to the app.
+    // Suppressed during a submit so register can route to onboarding (/role).
+    if (authState.isSignedIn && !_navigating) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/home');
       });
