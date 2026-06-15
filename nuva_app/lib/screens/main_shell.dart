@@ -3,8 +3,10 @@ import 'dart:ui' show ImageFilter, lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../l10n/strings.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
@@ -25,6 +27,15 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final s = S.of(ref);
+
+    // Auth gate: the main app requires a signed-in backend account.
+    // After logout (token cleared) this bounces the user back to /auth.
+    final auth = ref.watch(backendAuthProvider);
+    if (!auth.restoring && !auth.isSignedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/auth');
+      });
+    }
 
     final pages = const [
       HomeScreen(),
