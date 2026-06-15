@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
 import '../models/specialist.dart';
+import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -145,9 +146,16 @@ class _MoodRowState extends ConsumerState<_MoodRow> {
 
   Future<void> _save(int mood) async {
     try {
-      await ref.read(dbProvider).saveMood(mood);
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).post(
+        'journal/moods/',
+        {'mood': mood},
+        token: token,
+      );
+      ref.invalidate(gamificationProvider);
+      ref.invalidate(moodHistoryProvider);
     } catch (_) {
-      // Not signed in / backend off — mood just stays local.
+      // Not signed in / backend off — the pick still shows locally.
     }
   }
 

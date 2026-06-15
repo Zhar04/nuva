@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../models/booking.dart';
+import '../models/gamification.dart';
 import '../models/specialist.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
@@ -171,22 +172,25 @@ class SessionsScreen extends ConsumerWidget {
   }
 }
 
-class JournalScreen extends StatelessWidget {
+class JournalScreen extends ConsumerWidget {
   const JournalScreen({super.key});
 
-  static const _entries = <(String, String, IconData, Color)>[
-    ('Сегодня', 'Норм', Icons.sentiment_satisfied_rounded, Color(0xFF49C6C0)),
-    ('Вчера', 'Тревожно', Icons.sentiment_dissatisfied_rounded,
-        Color(0xFFF2A65A)),
-    ('2 дня назад', 'Хорошо', Icons.sentiment_very_satisfied_rounded,
-        Color(0xFF5DC98A)),
-    ('3 дня назад', 'Так себе', Icons.sentiment_neutral_rounded,
-        Color(0xFF93A0B5)),
-  ];
+  String _dayLabel(DateTime day) {
+    final now = DateTime.now();
+    final d0 = DateTime(now.year, now.month, now.day);
+    final d = DateTime(day.year, day.month, day.day);
+    final diff = d0.difference(d).inDays;
+    if (diff <= 0) return 'Сегодня';
+    if (diff == 1) return 'Вчера';
+    if (diff < 7) return '$diff дн. назад';
+    return DateFormat('d MMMM', 'ru').format(day);
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.nuva;
+    final moods =
+        ref.watch(moodHistoryProvider).valueOrNull ?? const <MoodEntry>[];
     return _Sub(
       title: 'Дневник настроения',
       child: Column(
@@ -195,47 +199,64 @@ class JournalScreen extends StatelessWidget {
           Text('Отмечайте настроение на главной — оно появится здесь.',
               style: TextStyle(color: t.textSec, fontSize: 13)),
           const SizedBox(height: 16),
-          ..._entries.map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: GlassCard(
-                  elevated: true,
-                  radius: 16,
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            e.$4.withValues(alpha: 0.95),
-                            e.$4.withValues(alpha: 0.55),
-                          ]),
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(e.$3, color: Colors.white, size: 22),
+          if (moods.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30),
+              child: Center(
+                child: Text('Пока нет записей',
+                    style: TextStyle(color: t.textTer, fontSize: 13)),
+              ),
+            ),
+          ...moods.map((e) {
+            final vis = moodVisuals[e.mood] ?? moodVisuals[3]!;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: GlassCard(
+                elevated: true,
+                radius: 16,
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          vis.$3.withValues(alpha: 0.95),
+                          vis.$3.withValues(alpha: 0.55),
+                        ]),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(e.$2,
+                      alignment: Alignment.center,
+                      child: Icon(vis.$2, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(vis.$1,
+                              style: TextStyle(
+                                  color: t.text,
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600)),
+                          if (e.note.isNotEmpty)
+                            Text(e.note,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    color: t.text,
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w600)),
-                            Text(e.$1,
-                                style: TextStyle(
-                                    color: t.textTer, fontSize: 12)),
-                          ],
-                        ),
+                                    color: t.textSec, fontSize: 12.5)),
+                          Text(_dayLabel(e.day),
+                              style:
+                                  TextStyle(color: t.textTer, fontSize: 12)),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              )),
+              ),
+            );
+          }),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/gamification.dart';
+import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
@@ -14,7 +15,7 @@ class GamificationCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.nuva;
-    final g = ref.watch(gamificationProvider);
+    final g = ref.watch(gamificationProvider).valueOrNull ?? gamificationFallback;
 
     return GlassCard(
       onTap: () => context.push('/progress'),
@@ -86,7 +87,7 @@ class ProgressScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.nuva;
-    final g = ref.watch(gamificationProvider);
+    final g = ref.watch(gamificationProvider).valueOrNull ?? gamificationFallback;
 
     return Scaffold(
       body: GlassBackdrop(

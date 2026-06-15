@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/booking.dart';
 import '../models/chat.dart';
 import '../models/community.dart';
+import '../models/gamification.dart';
 import '../models/specialist.dart';
 import 'auth_service.dart';
 import 'backend_auth.dart' show apiClientProvider, backendAuthProvider;
@@ -181,6 +182,37 @@ final messagesProvider =
   return rows
       .map((m) => ApiMessage.fromJson(m as Map<String, dynamic>))
       .toList();
+});
+
+/// Gamification stats (points / level / streak / achievements) computed by the
+/// backend from real activity (`/api/v1/journal/stats/`).
+final gamificationProvider = FutureProvider<GamificationState>((ref) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return gamificationFallback;
+  final api = ref.watch(apiClientProvider);
+  try {
+    final m = await api.get('journal/stats/', token: token);
+    return GamificationState.fromJson(m);
+  } catch (_) {
+    return gamificationFallback;
+  }
+});
+
+/// The current user's mood history (`/api/v1/journal/moods/`).
+final moodHistoryProvider = FutureProvider<List<MoodEntry>>((ref) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  final api = ref.watch(apiClientProvider);
+  try {
+    final rows = await api.getList('journal/moods/', token: token);
+    return rows
+        .map((m) => MoodEntry.fromJson(m as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
+  }
 });
 
 /// The current user's bookings from the backend (`/api/v1/bookings/`).

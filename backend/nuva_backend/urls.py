@@ -17,6 +17,7 @@ urlpatterns = [
     path("api/v1/bookings/", include("booking.urls")),
     path("api/v1/chat/", include("chat.urls")),
     path("api/v1/community/", include("community.urls")),
+    path("api/v1/journal/", include("journal.urls")),
 ]
 
 # Branding for the admin (your "админка").
