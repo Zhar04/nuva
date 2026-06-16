@@ -131,6 +131,7 @@ class _State extends ConsumerState<ProfileEditScreen> {
                     children: [
                       Center(
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: _pickAvatar,
                           child: SizedBox(
                             width: 104,

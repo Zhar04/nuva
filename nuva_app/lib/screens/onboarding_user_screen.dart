@@ -165,6 +165,7 @@ class _State extends ConsumerState<OnboardingUserScreen> {
           children: [
             Center(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: _pickAvatar,
                 child: SizedBox(
                   width: 96,

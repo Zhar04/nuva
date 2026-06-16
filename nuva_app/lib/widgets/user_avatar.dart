@@ -3,9 +3,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
 
 import 'avatar.dart';
+import 'image_pick.dart';
 
 /// Shows the user's uploaded avatar (a base64 data URL) if present, otherwise a
 /// gradient initials placeholder. Drop-in alongside [GradientAvatar].
@@ -66,9 +66,8 @@ Uint8List? decodeDataUrl(String dataUrl) {
 /// data URL, resized to [maxWidth]. We resize in Dart (the `image` package)
 /// because image_picker ignores maxWidth/quality on web. Returns null on cancel.
 Future<String?> pickImageDataUrl({int maxWidth = 512, int quality = 75}) async {
-  final x = await ImagePicker().pickImage(source: ImageSource.gallery);
-  if (x == null) return null;
-  final raw = await x.readAsBytes();
+  final raw = await pickRawImageBytes();
+  if (raw == null) return null;
   try {
     final decoded = img.decodeImage(raw);
     if (decoded != null) {
@@ -81,6 +80,5 @@ Future<String?> pickImageDataUrl({int maxWidth = 512, int quality = 75}) async {
   } catch (_) {
     // fall through to the raw bytes (the server size-guard still applies)
   }
-  final mime = x.mimeType ?? 'image/jpeg';
-  return 'data:$mime;base64,${base64Encode(raw)}';
+  return 'data:image/jpeg;base64,${base64Encode(raw)}';
 }

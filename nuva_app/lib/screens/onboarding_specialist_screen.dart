@@ -41,7 +41,14 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
     });
     try {
       await ref.read(backendAuthProvider.notifier).updateProfile(avatar: url);
-    } catch (_) {
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: context.nuva.danger,
+          content: Text('Не удалось загрузить фото: $e',
+              style: const TextStyle(color: Colors.white)),
+        ));
+      }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }
@@ -105,7 +112,7 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
       case 1:
         return _expertise.isNotEmpty;
       case 2:
-        return _docs['Диплом о психологическом образовании'] == true;
+        return true; // documents are recommended but can be added later
       default:
         return true;
     }
@@ -227,6 +234,7 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
           children: [
             Center(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: _pickAvatar,
                 child: SizedBox(
                   width: 96,
@@ -280,7 +288,9 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                _avatar.isNotEmpty ? 'Фото добавлено' : 'Фото обязательно',
+                _avatar.isNotEmpty
+                    ? 'Фото добавлено'
+                    : 'Нажмите, чтобы добавить фото (можно позже)',
                 style: TextStyle(
                     color: _avatar.isNotEmpty ? t.teal : t.textTer,
                     fontSize: 12),
