@@ -40,7 +40,12 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
       _uploadingAvatar = true;
     });
     try {
-      await ref.read(backendAuthProvider.notifier).updateProfile(avatar: url);
+      // Only sync to the backend if we already have an account; otherwise keep
+      // the local preview (the new flow registers before onboarding, so this
+      // normally runs signed in).
+      if (ref.read(backendAuthProvider).isSignedIn) {
+        await ref.read(backendAuthProvider.notifier).updateProfile(avatar: url);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -159,6 +164,9 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
         token: token,
       );
       ref.invalidate(specialistsProvider);
+      // The backend promoted this account to 'psychologist'; reload the cached
+      // user so the app shows the specialist cabinet instead of the client tabs.
+      await ref.read(backendAuthProvider.notifier).reloadUser();
     } catch (_) {/* profile can be edited later in the cabinet */}
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

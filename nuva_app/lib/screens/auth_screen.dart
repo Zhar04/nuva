@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/user_profile.dart';
 import '../services/api_client.dart';
 import '../services/backend_auth.dart';
 import '../theme/theme.dart';
@@ -54,12 +55,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _navigating = true;
     setState(() => _busy = true);
     final auth = ref.read(backendAuthProvider.notifier);
+    // Role was chosen on /role before landing here; register with it so the
+    // backend account has the correct role (psychologist → cabinet, not seeker).
+    final role = ref.read(userProfileProvider).role;
     try {
       if (_register) {
         await auth.register(
-            email: email, password: password, name: _name.text.trim());
+            email: email,
+            password: password,
+            name: _name.text.trim(),
+            role: role.storage);
         _snack('Аккаунт создан');
-        if (mounted) context.go('/role'); // new user → onboarding
+        if (mounted) {
+          context.go(role == UserRole.psychologist
+              ? '/onboarding/specialist'
+              : '/onboarding/user');
+        }
       } else {
         await auth.login(email: email, password: password);
         _snack('С возвращением!');

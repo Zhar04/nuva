@@ -48,6 +48,13 @@ class SpecialistMeView(APIView):
         if not sp.is_active:
             sp.is_active = True
             sp.save(update_fields=["is_active"])
+        # Owning a specialist profile *is* what makes a user a psychologist.
+        # Promote the account so the app shows the specialist cabinet (this also
+        # repairs accounts registered before the role was passed at sign-up).
+        user = request.user
+        if user.role != user.Role.PSYCHOLOGIST:
+            user.role = user.Role.PSYCHOLOGIST
+            user.save(update_fields=["role"])
         return Response(
             {"exists": True, **SpecialistDetailSerializer(sp).data}
         )

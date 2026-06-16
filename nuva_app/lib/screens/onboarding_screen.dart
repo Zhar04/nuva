@@ -28,7 +28,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarded', true); // intro slides seen (once per device)
     if (!mounted) return;
-    context.go('/auth');
+    context.go('/role'); // pick a role first → then register with that role
   }
 
   @override

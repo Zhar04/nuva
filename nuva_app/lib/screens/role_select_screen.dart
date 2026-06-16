@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/user_profile.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 
@@ -15,7 +16,14 @@ class RoleSelectScreen extends ConsumerWidget {
     final t = context.nuva;
     void pick(UserRole role, String route) {
       ref.read(userProfileProvider.notifier).update(role: role);
-      context.go(route);
+      // A psychologist (and any backend-dependent flow) needs an account before
+      // onboarding, so the avatar/profile uploads have a JWT. New users register
+      // first (carrying the chosen role); already-signed-in users go straight in.
+      if (ref.read(backendAuthProvider).isSignedIn) {
+        context.go(route);
+      } else {
+        context.go('/auth?mode=register');
+      }
     }
 
     return Scaffold(

@@ -134,6 +134,12 @@ class BackendAuth extends StateNotifier<AuthState> {
     await _loadMe();
   }
 
+  /// Re-fetch the signed-in user (e.g. after the backend changed their role
+  /// when a specialist profile was created). No-op if not signed in.
+  Future<void> reloadUser() async {
+    if (_access != null) await _loadMe();
+  }
+
   Future<void> logout() async {
     await _clear();
     state = const AuthState();
