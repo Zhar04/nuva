@@ -121,12 +121,14 @@ class BackendAuth extends StateNotifier<AuthState> {
     await _loadMe();
   }
 
-  /// Update profile fields (name / avatar) then refresh the full user.
-  Future<void> updateProfile({String? name, String? avatar, String? bio}) async {
+  /// Update profile fields (name / avatar / bio / mbti) then refresh the user.
+  Future<void> updateProfile(
+      {String? name, String? avatar, String? bio, String? mbti}) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
     if (avatar != null) body['avatar'] = avatar;
     if (bio != null) body['bio'] = bio;
+    if (mbti != null) body['mbti'] = mbti;
     if (body.isEmpty) return;
     await _api.patch('auth/me', body, token: _access);
     await _loadMe();

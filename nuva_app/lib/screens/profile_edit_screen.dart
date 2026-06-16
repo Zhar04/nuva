@@ -256,15 +256,12 @@ class _State extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       GestureDetector(
-                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Тест 16Personalities — скоро')),
-                        ),
+                        onTap: () => context.push('/mbti'),
                         child: Row(
                           children: [
                             Icon(Icons.quiz_outlined, color: t.blue, size: 16),
                             const SizedBox(width: 6),
-                            Text('Пройти более точный тест',
+                            Text('Пройти тест на тип личности',
                                 style: TextStyle(
                                   color: t.blue,
                                   fontSize: 13,

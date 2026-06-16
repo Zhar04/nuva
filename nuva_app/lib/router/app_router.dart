@@ -9,6 +9,7 @@ import '../screens/community_post_screen.dart';
 import '../screens/intake_screen.dart';
 import '../screens/legal_screens.dart';
 import '../screens/main_shell.dart';
+import '../screens/mbti_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/onboarding_specialist_screen.dart';
 import '../screens/onboarding_user_screen.dart';
@@ -56,6 +57,7 @@ Future<GoRouter> buildRouter() async {
           builder: (_, __) => const NotificationsScreen()),
       GoRoute(path: '/help', builder: (_, __) => const HelpScreen()),
       GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
+      GoRoute(path: '/mbti', builder: (_, __) => const MbtiScreen()),
 
       // Shell tabs (IndexedStack inside).
       GoRoute(path: '/home', builder: (_, __) => const MainShell(initialTab: 0)),
