@@ -104,9 +104,9 @@ Future<GoRouter> buildRouter() async {
         builder: (_, st) => ChatScreen(chatId: st.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/call/:specialistId',
+        path: '/call/:room',
         builder: (_, st) =>
-            VideoCallScreen(specialistId: st.pathParameters['specialistId']!),
+            VideoCallScreen(roomSeed: st.pathParameters['room']!),
       ),
 
       GoRoute(

@@ -175,9 +175,9 @@ class _State extends ConsumerState<ChatScreen> {
                 initials: convo?.specialistInitials ?? '·',
                 gradient: convo?.gradient ??
                     const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
-                onVideo: convo == null
-                    ? null
-                    : () => context.push('/call/${convo.specialistId}'),
+                // Room derived from the conversation id, so the seeker and the
+                // psychologist join the exact same Jitsi room.
+                onVideo: () => context.push('/call/conv$_convoId'),
               ),
               Expanded(
                 child: messagesAsync.isLoading && server.isEmpty
