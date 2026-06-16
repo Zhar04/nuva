@@ -353,17 +353,42 @@ class PsyProfileScreen extends ConsumerWidget {
                 radius: 18,
                 padding: const EdgeInsets.all(16),
                 child: me == null
-                    ? Row(
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline_rounded,
-                              color: t.textSec, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Профиль ещё не заполнен — клиенты вас не видят. '
-                              'Заполните в онбординге специалиста.',
-                              style: TextStyle(
-                                  color: t.textSec, fontSize: 13, height: 1.4),
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded,
+                                  color: t.textSec, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Профиль специалиста ещё не создан — клиенты '
+                                  'вас не видят. Заполните его, чтобы появиться '
+                                  'в каталоге.',
+                                  style: TextStyle(
+                                      color: t.textSec,
+                                      fontSize: 13,
+                                      height: 1.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  context.push('/onboarding/specialist'),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text('Заполнить профиль'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: t.blue,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
                             ),
                           ),
                         ],

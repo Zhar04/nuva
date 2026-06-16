@@ -139,16 +139,33 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
     }
   }
 
+  bool _submitting = false;
+
   Future<void> _finish() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
     await ref.read(userProfileProvider.notifier).update(
           role: UserRole.psychologist,
           name: _name.text.trim(),
           onboarded: true,
         );
-    // Create the psychologist's own catalog profile so clients can find them.
+    // The catalog "Specialist" row is separate from the user account and is
+    // created here. Without an account this can't happen, so surface it loudly
+    // instead of silently dropping the user on /home with no profile.
+    final token = ref.read(backendAuthProvider.notifier).accessToken;
+    if (token == null) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: context.nuva.danger,
+        content: const Text(
+            'Не удалось создать профиль: вы не вошли в аккаунт. Войдите и повторите.',
+            style: TextStyle(color: Colors.white)),
+      ));
+      return;
+    }
     final parts = _name.text.trim().split(' ');
     try {
-      final token = ref.read(backendAuthProvider.notifier).accessToken;
       await ref.read(apiClientProvider).put(
         'specialists/me',
         {
@@ -164,10 +181,23 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
         token: token,
       );
       ref.invalidate(specialistsProvider);
+      ref.invalidate(specialistMeProvider);
       // The backend promoted this account to 'psychologist'; reload the cached
       // user so the app shows the specialist cabinet instead of the client tabs.
       await ref.read(backendAuthProvider.notifier).reloadUser();
-    } catch (_) {/* profile can be edited later in the cabinet */}
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: context.nuva.danger,
+        content: Text(
+            e is ApiException
+                ? 'Не удалось создать профиль: ${e.message}'
+                : 'Не удалось создать профиль. Проверьте интернет и повторите.',
+            style: const TextStyle(color: Colors.white)),
+      ));
+      return; // stay on the screen so the psychologist can retry
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -224,9 +254,9 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
                     24, 4, 24, 12 + MediaQuery.viewPaddingOf(context).bottom),
                 child: PrimaryButton(
                   label: _step == _titles.length - 1
-                      ? 'Отправить на проверку'
+                      ? (_submitting ? 'Отправляем…' : 'Отправить на проверку')
                       : 'Далее',
-                  onPressed: _canNext ? _next : null,
+                  onPressed: (_canNext && !_submitting) ? _next : null,
                 ),
               ),
             ],
