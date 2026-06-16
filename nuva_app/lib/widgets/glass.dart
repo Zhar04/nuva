@@ -24,25 +24,33 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
-    // Liquid Glass: elevated cards get a crisp top sheen + a soft blue-tinted
-    // lift shadow so they read as tappable glass floating above the backdrop
-    // (instead of flat grey panels).
-    final sheen = elevated
+    // Liquid Glass (web approximation — real refraction needs Impeller/native,
+    // see memory). Each elevated surface gets: a faint adaptive blue tint, a
+    // crisp specular highlight along the TOP edge, a soft depth shadow toward
+    // the BOTTOM (inner-shadow feel), a blue-tinted lift shadow, and a bright
+    // top rim — so it reads as light passing through glass, not a flat panel.
+    final baseFill = elevated ? t.glassBgUp : t.glassBgDown;
+    final fill = Color.alphaBlend(
+      t.blue.withValues(alpha: t.dark ? 0.055 : 0.03),
+      baseFill,
+    );
+    final glassGradient = elevated
         ? LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.white.withValues(alpha: t.dark ? 0.18 : 0.55),
+              Colors.white.withValues(alpha: t.dark ? 0.26 : 0.60), // specular
               Colors.white.withValues(alpha: 0.0),
+              Colors.black.withValues(alpha: t.dark ? 0.13 : 0.035), // depth
             ],
-            stops: const [0.0, 0.28],
+            stops: const [0.0, 0.22, 1.0],
           )
         : null;
     final shadows = elevated
         ? <BoxShadow>[
             ...t.glassShine,
             BoxShadow(
-              color: t.blue.withValues(alpha: t.dark ? 0.22 : 0.15),
+              color: t.blue.withValues(alpha: t.dark ? 0.20 : 0.14),
               blurRadius: 30,
               spreadRadius: -8,
               offset: const Offset(0, 16),
@@ -52,24 +60,27 @@ class GlassCard extends StatelessWidget {
     final card = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        filter: ImageFilter.blur(
+          sigmaX: blur + (elevated ? 4 : 0),
+          sigmaY: blur + (elevated ? 4 : 0),
+        ),
         child: Container(
           decoration: BoxDecoration(
-            color: elevated ? t.glassBgUp : t.glassBgDown,
+            color: fill,
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
               color: elevated
-                  ? (t.dark ? const Color(0x4DFFFFFF) : const Color(0x70FFFFFF))
+                  ? (t.dark ? const Color(0x59FFFFFF) : const Color(0x82FFFFFF))
                   : t.glassBorder,
               width: 1,
             ),
             boxShadow: shadows,
           ),
-          foregroundDecoration: sheen == null
+          foregroundDecoration: glassGradient == null
               ? null
               : BoxDecoration(
                   borderRadius: BorderRadius.circular(radius),
-                  gradient: sheen,
+                  gradient: glassGradient,
                 ),
           padding: padding,
           child: child,
@@ -134,7 +145,7 @@ class _Blob extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          colors: [color, color.withOpacity(0)],
+          colors: [color, color.withValues(alpha: 0)],
           stops: const [0, 1],
         ),
       ),
