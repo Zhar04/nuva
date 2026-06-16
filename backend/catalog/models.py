@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 # JSONField is used for the small list-fields so the schema works on both
@@ -5,6 +6,15 @@ from django.db import models
 
 
 class Specialist(models.Model):
+    # A real psychologist account that owns this catalog listing (null for the
+    # seeded demo specialists). One user → one specialist profile.
+    owner = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="specialist_profile",
+    )
     first_name = models.CharField(max_length=80)
     last_name = models.CharField(max_length=80)
     title = models.CharField(max_length=120)

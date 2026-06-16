@@ -22,20 +22,41 @@ class ConversationSerializer(serializers.ModelSerializer):
     specialist = ConversationSpecialistSerializer(read_only=True)
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
+    viewer_is_specialist = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
         fields = (
             "id", "specialist", "last_message", "unread_count",
+            "viewer_is_specialist", "client_name",
+            "call_requested", "call_accepted",
             "created_at", "updated_at",
         )
+
+    def _is_spec(self, obj):
+        request = self.context.get("request")
+        u = getattr(request, "user", None)
+        return bool(
+            u and u.is_authenticated and obj.specialist.owner_id == u.id
+        )
+
+    def get_viewer_is_specialist(self, obj):
+        return self._is_spec(obj)
+
+    def get_client_name(self, obj):
+        n = (obj.user.name or "").strip()
+        return n if n else "Клиент"
 
     def get_last_message(self, obj):
         msg = obj.messages.order_by("-created_at").first()
         return MessageSerializer(msg).data if msg else None
 
     def get_unread_count(self, obj):
-        # Messages from the specialist the seeker has not read yet.
-        return obj.messages.filter(
-            sender=Message.Sender.SPECIALIST, is_read=False
-        ).count()
+        # The *other* side's unread messages, from the current viewer's angle.
+        other = (
+            Message.Sender.USER
+            if self._is_spec(obj)
+            else Message.Sender.SPECIALIST
+        )
+        return obj.messages.filter(sender=other, is_read=False).count()

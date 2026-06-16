@@ -1,7 +1,13 @@
 from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Specialist
-from .serializers import SpecialistDetailSerializer, SpecialistListSerializer
+from .serializers import (
+    SpecialistDetailSerializer,
+    SpecialistListSerializer,
+    SpecialistMeSerializer,
+)
 
 
 class SpecialistListView(generics.ListAPIView):
@@ -19,3 +25,29 @@ class SpecialistDetailView(generics.RetrieveAPIView):
     serializer_class = SpecialistDetailSerializer
     permission_classes = [permissions.AllowAny]
     queryset = Specialist.objects.all()
+
+
+class SpecialistMeView(APIView):
+    """The signed-in psychologist's own catalog profile.
+
+    GET → {exists, ...profile}; PUT → create or update it (and list them)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        sp = getattr(request.user, "specialist_profile", None)
+        if sp is None:
+            return Response({"exists": False})
+        return Response({"exists": True, **SpecialistDetailSerializer(sp).data})
+
+    def put(self, request):
+        sp = getattr(request.user, "specialist_profile", None)
+        ser = SpecialistMeSerializer(sp, data=request.data, partial=sp is not None)
+        ser.is_valid(raise_exception=True)
+        sp = ser.save(owner=request.user)
+        if not sp.is_active:
+            sp.is_active = True
+            sp.save(update_fields=["is_active"])
+        return Response(
+            {"exists": True, **SpecialistDetailSerializer(sp).data}
+        )

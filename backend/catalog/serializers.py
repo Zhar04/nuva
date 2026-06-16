@@ -32,3 +32,15 @@ class SpecialistDetailSerializer(SpecialistListSerializer):
 
     class Meta(SpecialistListSerializer.Meta):
         fields = SpecialistListSerializer.Meta.fields + ("education", "reviews")
+
+
+class SpecialistMeSerializer(serializers.ModelSerializer):
+    """Writable profile a psychologist edits for their own catalog listing."""
+
+    class Meta:
+        model = Specialist
+        fields = (
+            "first_name", "last_name", "title", "years_experience",
+            "languages", "approaches", "works_with", "session_price_kzt",
+            "about", "diplomas", "avatar_gradient", "is_active",
+        )

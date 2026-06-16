@@ -20,6 +20,10 @@ class Conversation(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Video-call handshake: the client requests, the specialist accepts; while
+    # accepted both sides can join the Jitsi room.
+    call_requested = models.BooleanField(default=False)
+    call_accepted = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-updated_at"]

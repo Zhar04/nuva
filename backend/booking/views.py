@@ -29,6 +29,20 @@ class BookingListCreateView(generics.ListCreateAPIView):
         return Response(BookingSerializer(booking).data, status=201)
 
 
+class IncomingBookingsView(generics.ListAPIView):
+    """GET the sessions booked with the signed-in psychologist's profile."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+    serializer_class = BookingSerializer
+
+    def get_queryset(self):
+        return (
+            Booking.objects.filter(specialist__owner=self.request.user)
+            .select_related("specialist", "user")
+        )
+
+
 class BookingDetailView(generics.RetrieveUpdateAPIView):
     """GET one / PATCH to cancel — owner only."""
 
