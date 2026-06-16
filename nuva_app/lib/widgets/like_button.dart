@@ -5,6 +5,60 @@ import '../services/data.dart';
 import '../theme/theme.dart';
 import 'nuva_logo.dart';
 
+/// Heart that fills with the active colour and pulses (squash→stretch→settle)
+/// the moment it becomes liked.
+class _PulseHeart extends StatefulWidget {
+  final bool liked;
+  final Color color;
+  final double size;
+  const _PulseHeart({
+    required this.liked,
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  State<_PulseHeart> createState() => _PulseHeartState();
+}
+
+class _PulseHeartState extends State<_PulseHeart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.82), weight: 35),
+    TweenSequenceItem(tween: Tween(begin: 0.82, end: 1.18), weight: 35),
+    TweenSequenceItem(tween: Tween(begin: 1.18, end: 1.0), weight: 30),
+  ]).animate(CurvedAnimation(parent: _c, curve: Curves.easeOut));
+
+  @override
+  void didUpdateWidget(covariant _PulseHeart old) {
+    super.didUpdateWidget(old);
+    if (widget.liked && !old.liked) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: NuvaHeartIcon(
+        size: widget.size,
+        color: widget.color,
+        filled: widget.liked,
+        strokeWidth: 2,
+      ),
+    );
+  }
+}
+
 /// A heart + count that toggles a like through [likeProvider] (single source of
 /// truth, server-reconciled). [likeKey] is e.g. `"post:5"` / `"reply:3"`;
 /// [path] is the backend toggle endpoint. [baseLiked]/[baseCount] are the
@@ -48,11 +102,10 @@ class LikeButton extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          NuvaHeartIcon(
-            size: iconSize,
+          _PulseHeart(
+            liked: liked,
             color: liked ? active : t.textSec,
-            filled: liked,
-            strokeWidth: 2,
+            size: iconSize,
           ),
           const SizedBox(width: 6),
           Text(

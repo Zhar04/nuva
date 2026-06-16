@@ -104,17 +104,22 @@ class _HeartPainter extends CustomPainter {
     required this.strokeWidth,
   });
 
+  // Exact transcription of the NuvaIcon "heart" SVG path (viewBox 24):
+  // M12 20 s-7-4.3-7-9.3 A3.8 3.8 0 0 1 12 8 a3.8 3.8 0 0 1 7-2.3 c0 5-7 9.3-7 9.3 Z
   Path _heart(double s) {
     final k = s / 24.0;
     final p = Path();
-    // Full, symmetric rounded heart (two lobes + smooth tip).
-    p.moveTo(12 * k, 7.4 * k); // center dip
-    p.cubicTo(10.2 * k, 4.6 * k, 6.5 * k, 4.1 * k, 4.4 * k, 6.5 * k);
-    p.cubicTo(2.4 * k, 8.7 * k, 2.9 * k, 12.1 * k, 5.7 * k, 14.8 * k);
-    p.cubicTo(7.6 * k, 16.7 * k, 9.9 * k, 18.8 * k, 12 * k, 20.9 * k);
-    p.cubicTo(14.1 * k, 18.8 * k, 16.4 * k, 16.7 * k, 18.3 * k, 14.8 * k);
-    p.cubicTo(21.1 * k, 12.1 * k, 21.6 * k, 8.7 * k, 19.6 * k, 6.5 * k);
-    p.cubicTo(17.5 * k, 4.1 * k, 13.8 * k, 4.6 * k, 12 * k, 7.4 * k);
+    p.moveTo(12 * k, 20 * k);
+    // s-7-4.3-7-9.3 (smooth cubic; prev not a cubic -> cp1 = current point)
+    p.cubicTo(12 * k, 20 * k, 5 * k, 15.7 * k, 5 * k, 10.7 * k);
+    // A3.8 3.8 0 0 1 12 8
+    p.arcToPoint(Offset(12 * k, 8 * k),
+        radius: Radius.circular(3.8 * k), clockwise: true);
+    // a3.8 3.8 0 0 1 7-2.3  -> abs (19, 5.7)
+    p.arcToPoint(Offset(19 * k, 5.7 * k),
+        radius: Radius.circular(3.8 * k), clockwise: true);
+    // c0 5-7 9.3-7 9.3  -> abs cp(19,10.7) cp(12,15) end(12,15)
+    p.cubicTo(19 * k, 10.7 * k, 12 * k, 15 * k, 12 * k, 15 * k);
     p.close();
     return p;
   }
