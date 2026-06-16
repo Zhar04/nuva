@@ -29,6 +29,10 @@ class Specialist {
   /// until an admin verifies their documents. Mock/demo specialists are verified.
   final bool isVerified;
 
+  /// Weekly availability the psychologist sets: ISO weekday (1=Mon … 7=Sun) →
+  /// sorted list of "HH:mm" start times.
+  final Map<int, List<String>> availability;
+
   const Specialist({
     required this.id,
     required this.firstName,
@@ -49,6 +53,7 @@ class Specialist {
     required this.availableSlots,
     required this.avatarGradient,
     this.isVerified = true,
+    this.availability = const {},
   });
 
   String get fullName => '$firstName $lastName';
@@ -92,7 +97,20 @@ class Specialist {
           ? grad.map(hexToColor).toList()
           : const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
       isVerified: (m['is_verified'] as bool?) ?? false,
+      availability: _parseAvailability(m['availability']),
     );
+  }
+
+  static Map<int, List<String>> _parseAvailability(dynamic v) {
+    if (v is! Map) return const {};
+    final out = <int, List<String>>{};
+    v.forEach((key, val) {
+      final day = int.tryParse('$key');
+      if (day == null || val is! List) return;
+      final slots = val.map((e) => e.toString()).toList()..sort();
+      out[day] = slots;
+    });
+    return out;
   }
 }
 

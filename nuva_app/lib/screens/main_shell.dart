@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import '../l10n/strings.dart';
 import '../services/backend_auth.dart';
 import '../theme/theme.dart';
-import 'chat_list_screen.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
@@ -45,7 +44,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     final List<Widget> pages = isPsy
         ? const [
             PsyTodayScreen(),
-            ChatListScreen(showBack: false, title: 'Клиенты'),
+            PsyScheduleScreen(),
+            PsyRequestsScreen(),
+            PsyEarningsScreen(),
             PsyProfileScreen(),
           ]
         : const [
@@ -58,7 +59,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     final List<(IconData, String)> items = isPsy
         ? const [
             (Icons.today_rounded, 'Сегодня'),
-            (Icons.people_alt_rounded, 'Клиенты'),
+            (Icons.calendar_month_rounded, 'Расписание'),
+            (Icons.forum_rounded, 'Запросы'),
+            (Icons.account_balance_wallet_rounded, 'Доходы'),
             (Icons.person_rounded, 'Профиль'),
           ]
         : [

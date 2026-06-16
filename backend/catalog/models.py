@@ -32,6 +32,10 @@ class Specialist(models.Model):
     avatar_gradient = models.JSONField(
         default=list, blank=True, help_text="['#7FB7E8','#A3D8F4']"
     )
+    # Weekly availability the psychologist sets in their cabinet. Map of ISO
+    # weekday ("1"=Mon … "7"=Sun) → list of "HH:MM" start times, e.g.
+    # {"1": ["10:00", "11:00"], "3": ["18:00"]}.
+    availability = models.JSONField(default=dict, blank=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     whatsapp = models.CharField(max_length=20, blank=True, default="")

@@ -22,7 +22,7 @@ class SpecialistListSerializer(serializers.ModelSerializer):
             "id", "first_name", "last_name", "title", "years_experience",
             "languages", "approaches", "works_with", "session_price_kzt",
             "rating", "review_count", "about", "diplomas", "avatar_gradient",
-            "is_verified", "is_active",
+            "availability", "is_verified", "is_active",
         )
 
 
@@ -42,5 +42,5 @@ class SpecialistMeSerializer(serializers.ModelSerializer):
         fields = (
             "first_name", "last_name", "title", "years_experience",
             "languages", "approaches", "works_with", "session_price_kzt",
-            "about", "diplomas", "avatar_gradient", "is_active",
+            "about", "diplomas", "avatar_gradient", "availability", "is_active",
         )

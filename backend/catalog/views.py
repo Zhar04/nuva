@@ -45,10 +45,13 @@ class SpecialistMeView(APIView):
 
     def put(self, request):
         sp = getattr(request.user, "specialist_profile", None)
-        ser = SpecialistMeSerializer(sp, data=request.data, partial=sp is not None)
+        creating = sp is None
+        ser = SpecialistMeSerializer(sp, data=request.data, partial=not creating)
         ser.is_valid(raise_exception=True)
         sp = ser.save(owner=request.user)
-        if not sp.is_active:
+        # Activate on first creation; afterwards respect the psychologist's own
+        # "приём открыт/закрыт" toggle (is_active) sent from the schedule screen.
+        if creating and not sp.is_active:
             sp.is_active = True
             sp.save(update_fields=["is_active"])
         # Owning a specialist profile *is* what makes a user a psychologist.
