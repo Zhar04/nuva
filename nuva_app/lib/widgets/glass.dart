@@ -31,7 +31,7 @@ class GlassCard extends StatelessWidget {
     // top rim — so it reads as light passing through glass, not a flat panel.
     final baseFill = elevated ? t.glassBgUp : t.glassBgDown;
     final fill = Color.alphaBlend(
-      t.blue.withValues(alpha: t.dark ? 0.055 : 0.03),
+      t.blue.withValues(alpha: t.dark ? 0.04 : 0.03),
       baseFill,
     );
     final glassGradient = elevated
@@ -39,11 +39,13 @@ class GlassCard extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.white.withValues(alpha: t.dark ? 0.26 : 0.60), // specular
+              // Soft specular along the top edge (kept subtle in dark mode so
+              // cards don't wash out and text stays readable).
+              Colors.white.withValues(alpha: t.dark ? 0.07 : 0.55),
               Colors.white.withValues(alpha: 0.0),
-              Colors.black.withValues(alpha: t.dark ? 0.13 : 0.035), // depth
+              Colors.black.withValues(alpha: t.dark ? 0.06 : 0.03), // depth
             ],
-            stops: const [0.0, 0.22, 1.0],
+            stops: const [0.0, 0.20, 1.0],
           )
         : null;
     final shadows = elevated
@@ -70,7 +72,7 @@ class GlassCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
               color: elevated
-                  ? (t.dark ? const Color(0x59FFFFFF) : const Color(0x82FFFFFF))
+                  ? (t.dark ? const Color(0x2EFFFFFF) : const Color(0x82FFFFFF))
                   : t.glassBorder,
               width: 1,
             ),

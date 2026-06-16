@@ -62,6 +62,8 @@ class HomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    _ThemeSwitch(),
+                    const SizedBox(width: 8),
                     _LangSwitch(),
                   ],
                 ),
@@ -132,6 +134,33 @@ class _LangSwitch extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ThemeSwitch extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.nuva;
+    final mode = ref.watch(themeModeProvider);
+    final icon = switch (mode) {
+      ThemeMode.light => Icons.light_mode_rounded,
+      ThemeMode.dark => Icons.dark_mode_rounded,
+      _ => Icons.brightness_auto_rounded,
+    };
+    return GlassCard(
+      onTap: () {
+        final next = switch (mode) {
+          ThemeMode.system => ThemeMode.light,
+          ThemeMode.light => ThemeMode.dark,
+          ThemeMode.dark => ThemeMode.system,
+        };
+        ref.read(themeModeProvider.notifier).set(next);
+      },
+      radius: 999,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      elevated: true,
+      child: Icon(icon, size: 16, color: t.blue),
     );
   }
 }

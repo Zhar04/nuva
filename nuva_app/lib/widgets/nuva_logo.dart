@@ -107,13 +107,14 @@ class _HeartPainter extends CustomPainter {
   Path _heart(double s) {
     final k = s / 24.0;
     final p = Path();
-    p.moveTo(12 * k, 20.6 * k); // bottom tip
-    p.cubicTo(5.2 * k, 15.6 * k, 4.0 * k, 11.2 * k, 4.0 * k, 9.3 * k);
-    p.arcToPoint(Offset(12 * k, 8.2 * k),
-        radius: Radius.circular(4.0 * k), clockwise: true); // left lobe
-    p.arcToPoint(Offset(20 * k, 9.3 * k),
-        radius: Radius.circular(4.0 * k), clockwise: true); // right lobe
-    p.cubicTo(20 * k, 11.2 * k, 18.8 * k, 15.6 * k, 12 * k, 20.6 * k);
+    // Full, symmetric rounded heart (two lobes + smooth tip).
+    p.moveTo(12 * k, 7.4 * k); // center dip
+    p.cubicTo(10.2 * k, 4.6 * k, 6.5 * k, 4.1 * k, 4.4 * k, 6.5 * k);
+    p.cubicTo(2.4 * k, 8.7 * k, 2.9 * k, 12.1 * k, 5.7 * k, 14.8 * k);
+    p.cubicTo(7.6 * k, 16.7 * k, 9.9 * k, 18.8 * k, 12 * k, 20.9 * k);
+    p.cubicTo(14.1 * k, 18.8 * k, 16.4 * k, 16.7 * k, 18.3 * k, 14.8 * k);
+    p.cubicTo(21.1 * k, 12.1 * k, 21.6 * k, 8.7 * k, 19.6 * k, 6.5 * k);
+    p.cubicTo(17.5 * k, 4.1 * k, 13.8 * k, 4.6 * k, 12 * k, 7.4 * k);
     p.close();
     return p;
   }

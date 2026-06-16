@@ -104,9 +104,11 @@ class NuvaTokens {
         bgBase3: const Color(0xFF13202E),
         blobA: const Color(0x665EA0F0),
         blobB: const Color(0x4D36C9B6),
-        glassBgUp: const Color(0x33FFFFFF),
-        glassBgDown: const Color(0x1AFFFFFF),
-        glassBorder: const Color(0x33FFFFFF),
+        // Dark frosted glass: a translucent DARK navy (not a white overlay) so
+        // cards stay dark and text reads clearly in dark mode.
+        glassBgUp: const Color(0xC2161F30),
+        glassBgDown: const Color(0x73131B29),
+        glassBorder: const Color(0x26FFFFFF),
         glassShine: const [
           BoxShadow(
             color: Color(0x66000000),
