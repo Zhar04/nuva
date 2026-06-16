@@ -3,7 +3,13 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import MeUpdateSerializer, RegisterSerializer, UserSerializer
+from .models import ProDocument
+from .serializers import (
+    MeUpdateSerializer,
+    ProDocumentSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
 
 
 def _tokens_for(user):
@@ -47,3 +53,27 @@ class MeView(generics.RetrieveUpdateAPIView):
         if self.request.method in ("PUT", "PATCH"):
             return MeUpdateSerializer
         return UserSerializer
+
+
+class DocumentListCreateView(generics.ListCreateAPIView):
+    """GET my documents / POST a new one (base64 data URL)."""
+
+    serializer_class = ProDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return ProDocument.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class DocumentDetailView(generics.RetrieveDestroyAPIView):
+    """DELETE one of my documents."""
+
+    serializer_class = ProDocumentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ProDocument.objects.filter(user=self.request.user)

@@ -2,7 +2,17 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from .models import ProDocument
+
 User = get_user_model()
+
+MAX_B64 = 4_000_000  # ~3 MB of binary; keeps base64-in-DB sane
+
+
+def _check_size(value):
+    if value and len(value) > MAX_B64:
+        raise serializers.ValidationError("Файл слишком большой (макс ~3 МБ).")
+    return value
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -10,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id", "email", "name", "role",
-            "age", "gender", "mbti", "bio", "created_at",
+            "age", "gender", "mbti", "bio", "avatar", "created_at",
         )
         read_only_fields = ("id", "email", "role", "created_at")
 
@@ -49,4 +59,17 @@ class RegisterSerializer(serializers.ModelSerializer):
 class MeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("name", "age", "gender", "mbti", "bio")
+        fields = ("name", "age", "gender", "mbti", "bio", "avatar")
+
+    def validate_avatar(self, value):
+        return _check_size(value)
+
+
+class ProDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProDocument
+        fields = ("id", "title", "data", "content_type", "created_at")
+        read_only_fields = ("id", "created_at")
+
+    def validate_data(self, value):
+        return _check_size(value)

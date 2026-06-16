@@ -2,7 +2,14 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .forms import UserCreateForm, UserUpdateForm
-from .models import User
+from .models import ProDocument, User
+
+
+@admin.register(ProDocument)
+class ProDocumentAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "title", "content_type", "created_at")
+    search_fields = ("user__email", "title")
+    date_hierarchy = "created_at"
 
 
 @admin.register(User)

@@ -19,6 +19,7 @@ urlpatterns = [
     path("api/v1/community/", include("community.urls")),
     path("api/v1/journal/", include("journal.urls")),
     path("api/v1/ai/", include("ai.urls")),
+    path("api/v1/documents/", include("accounts.doc_urls")),
 ]
 
 # Branding for the admin (your "админка").

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -51,6 +52,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     gender = models.CharField(max_length=20, blank=True, default="")
     mbti = models.CharField(max_length=4, blank=True, default="")
     bio = models.TextField(blank=True, default="")
+    # Avatar as a base64 data URL (small, resized client-side). Railway's disk
+    # is ephemeral, so we keep it in the DB rather than as a media file.
+    avatar = models.TextField(blank=True, default="")
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -67,3 +71,26 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class ProDocument(models.Model):
+    """A document a (psychologist) user uploads — diploma, certificate, etc.
+    Stored as a base64 data URL (image/PDF) to survive Railway's ephemeral disk."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="documents",
+        on_delete=models.CASCADE,
+    )
+    title = models.CharField(max_length=160, blank=True, default="")
+    data = models.TextField()  # base64 data URL
+    content_type = models.CharField(max_length=80, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Документ"
+        verbose_name_plural = "Документы специалистов"
+
+    def __str__(self):
+        return f"{self.user.email}: {self.title or 'документ'}"
