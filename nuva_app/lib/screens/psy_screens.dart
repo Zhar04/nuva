@@ -8,6 +8,7 @@ import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../theme/tokens.dart';
+import '../widgets/auto_refresh.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
 import '../widgets/user_avatar.dart';
@@ -72,7 +73,14 @@ class PsyTodayScreen extends ConsumerWidget {
     final me = ref.watch(specialistMeProvider).valueOrNull;
     final async = ref.watch(incomingBookingsProvider);
 
-    return Scaffold(
+    return AutoRefresh(
+      interval: const Duration(seconds: 8),
+      onTick: (ref) {
+        ref.invalidate(incomingBookingsProvider);
+        ref.invalidate(conversationsProvider);
+        ref.invalidate(specialistMeProvider);
+      },
+      child: Scaffold(
       body: GlassBackdrop(
         child: SafeArea(
           child: Column(
@@ -144,6 +152,7 @@ class PsyTodayScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

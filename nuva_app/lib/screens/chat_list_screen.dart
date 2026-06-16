@@ -6,6 +6,7 @@ import '../l10n/strings.dart';
 import '../models/chat.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
+import '../widgets/auto_refresh.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
 
@@ -19,7 +20,10 @@ class ChatListScreen extends ConsumerWidget {
     final s = S.of(ref);
     final t = context.nuva;
 
-    return Scaffold(
+    return AutoRefresh(
+      interval: const Duration(seconds: 6),
+      onTick: (ref) => ref.invalidate(conversationsProvider),
+      child: Scaffold(
       body: GlassBackdrop(
         child: SafeArea(
           child: Column(
@@ -80,6 +84,7 @@ class ChatListScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

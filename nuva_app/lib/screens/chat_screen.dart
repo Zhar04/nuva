@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,16 +46,36 @@ class _State extends ConsumerState<ChatScreen> {
   /// Locally-appended messages awaiting the server refetch (optimistic UI).
   final List<ApiMessage> _optimistic = [];
 
+  /// Polls the thread for new messages / call state while it's open — a
+  /// lightweight stand-in for realtime (no websockets on this backend).
+  Timer? _poll;
+
   int get _convoId => int.tryParse(widget.chatId) ?? -1;
+
+  /// The conversation this screen shows, if loaded (for viewer-aware sending).
+  ApiConversation? _currentConvo() {
+    final convos =
+        ref.read(conversationsProvider).valueOrNull ?? const <ApiConversation>[];
+    for (final c in convos) {
+      if (c.id == _convoId) return c;
+    }
+    return null;
+  }
 
   @override
   void initState() {
     super.initState();
     _input.addListener(_check);
+    _poll = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      ref.invalidate(messagesProvider(_convoId));
+      ref.invalidate(conversationsProvider);
+    });
   }
 
   @override
   void dispose() {
+    _poll?.cancel();
     _scroll.dispose();
     _input.dispose();
     super.dispose();
@@ -77,9 +99,15 @@ class _State extends ConsumerState<ChatScreen> {
       ));
       return;
     }
+    // The bubble side is derived from the sender, so the optimistic message
+    // must carry the *viewer's* sender — otherwise the psychologist's own
+    // message renders on the client's side until the server echo arrives.
+    final mine = (_currentConvo()?.viewerIsSpecialist ?? false)
+        ? MsgSender.specialist
+        : MsgSender.user;
     final optimistic = ApiMessage(
       id: -DateTime.now().millisecondsSinceEpoch,
-      sender: MsgSender.user,
+      sender: mine,
       text: text,
       isRead: false,
       sentAt: DateTime.now(),
@@ -171,10 +199,10 @@ class _State extends ConsumerState<ChatScreen> {
     final server = messagesAsync.valueOrNull ?? const <ApiMessage>[];
 
     // Merge server + still-pending optimistic messages (drop ones the server
-    // has now echoed back by text+sender).
+    // has now echoed back, matched by the same sender + text).
     final pending = _optimistic
-        .where((o) => !server.any((m) =>
-            m.sender == MsgSender.user && m.text == o.text))
+        .where((o) =>
+            !server.any((m) => m.sender == o.sender && m.text == o.text))
         .toList();
     final messages = [...server, ...pending];
 
