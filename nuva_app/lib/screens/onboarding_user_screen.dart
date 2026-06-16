@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/user_profile.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 import '../widgets/onboarding_kit.dart';
+import '../widgets/user_avatar.dart';
 
 /// "Ищу поддержку" onboarding: basics → MBTI → 4 calm intro questions →
 /// hands off to the AI module (/intake, which has /skip). Prototype: local state.
@@ -23,7 +25,26 @@ class _State extends ConsumerState<OnboardingUserScreen> {
   final _age = TextEditingController();
   String? _gender;
   String? _mbti;
+  String _avatar = '';
+  bool _uploading = false;
   final Map<int, String> _answers = {};
+
+  Future<void> _pickAvatar() async {
+    if (_uploading) return;
+    final url = await pickImageDataUrl();
+    if (url == null) return;
+    setState(() {
+      _avatar = url;
+      _uploading = true;
+    });
+    try {
+      await ref.read(backendAuthProvider.notifier).updateProfile(avatar: url);
+    } catch (_) {
+      /* keep the local preview even if the upload fails */
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
 
   static const _titles = [
     'Расскажите о себе',
@@ -143,13 +164,54 @@ class _State extends ConsumerState<OnboardingUserScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: AvatarPickerStub(
-                initials: _name.text.trim().isEmpty
-                    ? 'А'
-                    : _name.text.trim().characters.first.toUpperCase(),
-                gradient: [t.blue, t.teal],
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Загрузка фото — скоро')),
+              child: GestureDetector(
+                onTap: _pickAvatar,
+                child: SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: Stack(
+                    children: [
+                      UserAvatar(
+                        avatar: _avatar,
+                        initials: _name.text.trim().isEmpty
+                            ? 'А'
+                            : _name.text.trim().characters.first.toUpperCase(),
+                        gradient: [t.blue, t.teal],
+                        size: 96,
+                        radius: 999,
+                        fontSize: 34,
+                      ),
+                      if (_uploading)
+                        const Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                                shape: BoxShape.circle, color: Colors.black54),
+                            child: Center(
+                              child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.4, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: t.blue,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: t.surface, width: 2),
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              color: Colors.white, size: 15),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

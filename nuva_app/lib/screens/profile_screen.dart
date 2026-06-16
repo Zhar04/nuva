@@ -11,6 +11,7 @@ import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
+import '../widgets/user_avatar.dart';
 import 'progress_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -170,7 +171,8 @@ class _Header extends ConsumerWidget {
       onTap: () => context.push('/profile/edit'),
       child: Row(
       children: [
-        GradientAvatar(
+        UserAvatar(
+          avatar: ref.watch(backendAuthProvider).user?.avatar ?? '',
           initials: p.initials,
           gradient: const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
           size: 64,

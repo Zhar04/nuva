@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/user_profile.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 import '../widgets/onboarding_kit.dart';
+import '../widgets/user_avatar.dart';
 
 /// Edit the local user profile (avatar stub, name, bio, MBTI, gender, age).
 class ProfileEditScreen extends ConsumerStatefulWidget {
@@ -21,6 +23,8 @@ class _State extends ConsumerState<ProfileEditScreen> {
   late final TextEditingController _age;
   String? _gender;
   String? _mbti;
+  String _avatar = '';
+  bool _uploading = false;
 
   @override
   void initState() {
@@ -31,6 +35,33 @@ class _State extends ConsumerState<ProfileEditScreen> {
     _age = TextEditingController(text: p.age?.toString() ?? '');
     _gender = p.gender;
     _mbti = p.mbti;
+    _avatar = ref.read(backendAuthProvider).user?.avatar ?? '';
+  }
+
+  Future<void> _pickAvatar() async {
+    if (_uploading) return;
+    final url = await pickImageDataUrl();
+    if (url == null) return;
+    setState(() {
+      _avatar = url;
+      _uploading = true;
+    });
+    try {
+      await ref.read(backendAuthProvider.notifier).updateProfile(avatar: url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Фото обновлено')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            backgroundColor: context.nuva.danger,
+            content: const Text('Не удалось загрузить фото',
+                style: TextStyle(color: Colors.white))));
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   @override
@@ -99,14 +130,61 @@ class _State extends ConsumerState<ProfileEditScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Center(
-                        child: AvatarPickerStub(
-                          initials: _name.text.trim().isEmpty
-                              ? 'А'
-                              : _name.text.trim().characters.first.toUpperCase(),
-                          gradient: [t.blue, t.teal],
-                          onTap: () => ScaffoldMessenger.of(context)
-                              .showSnackBar(const SnackBar(
-                                  content: Text('Загрузка фото — скоро'))),
+                        child: GestureDetector(
+                          onTap: _pickAvatar,
+                          child: SizedBox(
+                            width: 104,
+                            height: 104,
+                            child: Stack(
+                              children: [
+                                UserAvatar(
+                                  avatar: _avatar,
+                                  initials: _name.text.trim().isEmpty
+                                      ? 'А'
+                                      : _name.text.trim().characters.first
+                                          .toUpperCase(),
+                                  gradient: [t.blue, t.teal],
+                                  size: 104,
+                                  radius: 999,
+                                  fontSize: 38,
+                                ),
+                                if (_uploading)
+                                  const Positioned.fill(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.black54,
+                                      ),
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2.4,
+                                              color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                Positioned(
+                                  right: 2,
+                                  bottom: 2,
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: t.blue,
+                                      shape: BoxShape.circle,
+                                      border:
+                                          Border.all(color: t.surface, width: 2),
+                                    ),
+                                    child: const Icon(Icons.camera_alt_rounded,
+                                        color: Colors.white, size: 16),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),

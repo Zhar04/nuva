@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/user_profile.dart';
+import '../services/api_client.dart';
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 import '../widgets/onboarding_kit.dart';
+import '../widgets/user_avatar.dart';
 
 /// "Я психолог" onboarding — skips the AI module entirely. Collects photo,
 /// basics, expertise, and documents (diploma/certs upload STUBBED in prototype).
@@ -22,8 +25,53 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
   int _step = 0;
   final _name = TextEditingController();
   final _exp = TextEditingController();
-  bool _photoAttached = false;
+  String _avatar = '';
+  bool _uploadingAvatar = false;
+  String? _uploadingDoc;
   final Set<String> _expertise = {};
+
+  Future<void> _pickAvatar() async {
+    if (_uploadingAvatar) return;
+    final url = await pickImageDataUrl();
+    if (url == null) return;
+    setState(() {
+      _avatar = url;
+      _uploadingAvatar = true;
+    });
+    try {
+      await ref.read(backendAuthProvider.notifier).updateProfile(avatar: url);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  Future<void> _uploadDoc(String title) async {
+    if (_uploadingDoc != null) return;
+    final url = await pickImageDataUrl(maxWidth: 1400, quality: 82);
+    if (url == null) return;
+    setState(() => _uploadingDoc = title);
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      final mime = url.substring(5, url.indexOf(';'));
+      await ref.read(apiClientProvider).post(
+        'documents/',
+        {'title': title, 'data': url, 'content_type': mime},
+        token: token,
+      );
+      if (mounted) setState(() => _docs[title] = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: context.nuva.danger,
+          content: Text(e is ApiException ? e.message : 'Не удалось загрузить',
+              style: const TextStyle(color: Colors.white)),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingDoc = null);
+    }
+  }
   final Map<String, bool> _docs = {
     'Диплом о психологическом образовании': false,
     'Сертификаты о повышении квалификации': false,
@@ -157,26 +205,64 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: AvatarPickerStub(
-                initials: _name.text.trim().isEmpty
-                    ? 'П'
-                    : _name.text.trim().characters.first.toUpperCase(),
-                gradient: const [Color(0xFF7E8BD9), Color(0xFFB39DDB)],
-                onTap: () {
-                  setState(() => _photoAttached = true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Фото прикреплено (демо-загрузка)')),
-                  );
-                },
+              child: GestureDetector(
+                onTap: _pickAvatar,
+                child: SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: Stack(
+                    children: [
+                      UserAvatar(
+                        avatar: _avatar,
+                        initials: _name.text.trim().isEmpty
+                            ? 'П'
+                            : _name.text.trim().characters.first.toUpperCase(),
+                        gradient: const [Color(0xFF7E8BD9), Color(0xFFB39DDB)],
+                        size: 96,
+                        radius: 999,
+                        fontSize: 34,
+                      ),
+                      if (_uploadingAvatar)
+                        const Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                                shape: BoxShape.circle, color: Colors.black54),
+                            child: Center(
+                              child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.4, color: Colors.white)),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: t.blue,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: t.surface, width: 2),
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              color: Colors.white, size: 15),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 8),
             Center(
               child: Text(
-                _photoAttached ? 'Фото добавлено' : 'Фото обязательно',
+                _avatar.isNotEmpty ? 'Фото добавлено' : 'Фото обязательно',
                 style: TextStyle(
-                    color: _photoAttached ? t.teal : t.textTer, fontSize: 12),
+                    color: _avatar.isNotEmpty ? t.teal : t.textTer,
+                    fontSize: 12),
               ),
             ),
             const SizedBox(height: 18),
@@ -243,9 +329,7 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: GestureDetector(
-                  onTap: () {
-                    setState(() => _docs[doc] = !attached);
-                  },
+                  onTap: () => _uploadDoc(doc),
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -275,14 +359,21 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
                                 height: 1.3,
                               )),
                         ),
-                        Text(
-                          attached ? 'Прикреплено' : 'Загрузить',
-                          style: TextStyle(
-                            color: attached ? t.teal : t.blue,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
+                        if (_uploadingDoc == doc)
+                          const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2))
+                        else
+                          Text(
+                            attached ? 'Прикреплено' : 'Загрузить',
+                            style: TextStyle(
+                              color: attached ? t.teal : t.blue,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -290,7 +381,7 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
               );
             }),
             const SizedBox(height: 4),
-            Text('Демо: загрузка файлов появится с подключением хранилища.',
+            Text('Фото диплома/сертификата. Видно только модерации Nuva.',
                 style: TextStyle(color: t.textTer, fontSize: 11.5)),
           ],
         );

@@ -11,6 +11,7 @@ class BackendUser {
   final String role; // seeker | psychologist | admin
   final String? mbti;
   final String bio;
+  final String avatar; // base64 data URL, or '' if none
   const BackendUser({
     required this.id,
     required this.email,
@@ -18,6 +19,7 @@ class BackendUser {
     required this.role,
     this.mbti,
     this.bio = '',
+    this.avatar = '',
   });
 
   bool get isPsychologist => role == 'psychologist';
@@ -29,6 +31,7 @@ class BackendUser {
         role: (m['role'] ?? 'seeker') as String,
         mbti: m['mbti'] as String?,
         bio: (m['bio'] ?? '') as String,
+        avatar: (m['avatar'] ?? '') as String,
       );
 }
 
@@ -115,6 +118,17 @@ class BackendAuth extends StateNotifier<AuthState> {
     _access = r['access'] as String;
     _refresh = r['refresh'] as String;
     await _persist();
+    await _loadMe();
+  }
+
+  /// Update profile fields (name / avatar) then refresh the full user.
+  Future<void> updateProfile({String? name, String? avatar, String? bio}) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (avatar != null) body['avatar'] = avatar;
+    if (bio != null) body['bio'] = bio;
+    if (body.isEmpty) return;
+    await _api.patch('auth/me', body, token: _access);
     await _loadMe();
   }
 
