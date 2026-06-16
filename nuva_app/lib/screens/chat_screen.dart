@@ -113,6 +113,33 @@ class _State extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<void> _callAction(String action) async {
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).post(
+        'chat/conversations/$_convoId/call/',
+        {'action': action},
+        token: token,
+      );
+      ref.invalidate(conversationsProvider);
+      ref.invalidate(messagesProvider(_convoId));
+    } catch (_) {}
+  }
+
+  void _onVideo(ApiConversation? convo) {
+    if (convo == null) {
+      context.push('/call/conv$_convoId');
+      return;
+    }
+    if (convo.callAccepted) {
+      context.push('/call/conv$_convoId');
+    } else if (convo.viewerIsSpecialist) {
+      _callAction('accept'); // specialist agrees → both can join
+    } else {
+      _callAction('request'); // client asks for a call
+    }
+  }
+
   void _toEnd({bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
@@ -170,14 +197,14 @@ class _State extends ConsumerState<ChatScreen> {
           child: Column(
             children: [
               _Header(
-                name: convo?.specialistName ?? 'Специалист',
-                subtitle: convo?.title ?? '',
-                initials: convo?.specialistInitials ?? '·',
+                name: convo?.otherName ?? 'Чат',
+                subtitle: convo == null
+                    ? ''
+                    : (convo.viewerIsSpecialist ? 'Клиент' : convo.title),
+                initials: convo?.otherInitials ?? '·',
                 gradient: convo?.gradient ??
                     const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
-                // Room derived from the conversation id, so the seeker and the
-                // psychologist join the exact same Jitsi room.
-                onVideo: () => context.push('/call/conv$_convoId'),
+                onVideo: () => _onVideo(convo),
               ),
               Expanded(
                 child: messagesAsync.isLoading && server.isEmpty
@@ -197,6 +224,8 @@ class _State extends ConsumerState<ChatScreen> {
                               if (showDate) _DateChip(date: m.sentAt),
                               _MessageBubble(
                                   msg: m,
+                                  viewerIsSpecialist:
+                                      convo?.viewerIsSpecialist ?? false,
                                   gradient: convo?.gradient ??
                                       const [
                                         Color(0xFF7FB7E8),
@@ -207,6 +236,14 @@ class _State extends ConsumerState<ChatScreen> {
                         },
                       ),
               ),
+              if (convo != null &&
+                  (convo.callRequested || convo.callAccepted))
+                _CallBar(
+                  convo: convo,
+                  onJoin: () => context.push('/call/conv$_convoId'),
+                  onAccept: () => _callAction('accept'),
+                  onCancel: () => _callAction('end'),
+                ),
               if (_showContactWarning) _ContactWarn(text: s.contactWarning),
               _Composer(
                 controller: _input,
@@ -333,7 +370,12 @@ class _DateChip extends StatelessWidget {
 class _MessageBubble extends ConsumerWidget {
   final ApiMessage msg;
   final List<Color> gradient;
-  const _MessageBubble({required this.msg, required this.gradient});
+  final bool viewerIsSpecialist;
+  const _MessageBubble({
+    required this.msg,
+    required this.gradient,
+    this.viewerIsSpecialist = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -362,7 +404,11 @@ class _MessageBubble extends ConsumerWidget {
         ),
       );
     }
-    final isUser = msg.sender == MsgSender.user;
+    // "Mine" (right, blue) depends on the viewer: the specialist's own messages
+    // are sender=specialist; the client's own are sender=user.
+    final isUser = viewerIsSpecialist
+        ? msg.sender == MsgSender.specialist
+        : msg.sender == MsgSender.user;
     final time = DateFormat('HH:mm').format(msg.sentAt);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -419,6 +465,79 @@ class _MessageBubble extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CallBar extends StatelessWidget {
+  final ApiConversation convo;
+  final VoidCallback onJoin;
+  final VoidCallback onAccept;
+  final VoidCallback onCancel;
+  const _CallBar({
+    required this.convo,
+    required this.onJoin,
+    required this.onAccept,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final accepted = convo.callAccepted;
+    final isSpec = convo.viewerIsSpecialist;
+    final String text;
+    final Widget action;
+    if (accepted) {
+      text = 'Звонок принят';
+      action = _btn(t.teal, Colors.white, 'Войти', onJoin);
+    } else if (isSpec) {
+      text = 'Клиент запросил видеозвонок';
+      action = _btn(t.blue, Colors.white, 'Принять', onAccept);
+    } else {
+      text = 'Ожидаем психолога…';
+      action = _btn(t.glassBgUp, t.textSec, 'Отменить', onCancel);
+    }
+    final accent = accepted ? t.teal : t.blue;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.videocam_rounded, size: 18, color: accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(
+                    color: t.text,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
+          action,
+        ],
+      ),
+    );
+  }
+
+  Widget _btn(Color bg, Color fg, String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bg,
+        foregroundColor: fg,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(0, 36),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
     );
   }
 }

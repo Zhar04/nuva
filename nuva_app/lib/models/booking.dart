@@ -12,6 +12,8 @@ class AppBooking {
   final String format; // video | audio | chat
   final String status; // pending_payment | paid | completed | cancelled | refunded
   final int priceKzt;
+  final String clientName; // for the psychologist's incoming view
+  final int? conversationId; // thread with this client (to open chat/call)
 
   const AppBooking({
     required this.id,
@@ -22,7 +24,16 @@ class AppBooking {
     required this.format,
     required this.status,
     required this.priceKzt,
+    this.clientName = 'Клиент',
+    this.conversationId,
   });
+
+  /// A call can be joined from ~5 min before the start until 90 min after.
+  bool get joinable {
+    final now = DateTime.now();
+    return now.isAfter(startsAt.subtract(const Duration(minutes: 5))) &&
+        now.isBefore(startsAt.add(const Duration(minutes: 90)));
+  }
 
   bool get isUpcoming =>
       startsAt.isAfter(DateTime.now()) &&
@@ -63,6 +74,8 @@ class AppBooking {
       format: (m['format'] ?? 'video') as String,
       status: (m['status'] ?? 'pending_payment') as String,
       priceKzt: (m['price_kzt'] as num?)?.toInt() ?? 0,
+      clientName: (m['client_name'] ?? 'Клиент') as String,
+      conversationId: (m['conversation_id'] as num?)?.toInt(),
     );
   }
 }

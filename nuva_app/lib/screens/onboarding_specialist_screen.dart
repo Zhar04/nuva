@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../models/user_profile.dart';
 import '../services/api_client.dart';
 import '../services/backend_auth.dart';
+import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 import '../widgets/onboarding_kit.dart';
@@ -132,10 +133,30 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
           name: _name.text.trim(),
           onboarded: true,
         );
+    // Create the psychologist's own catalog profile so clients can find them.
+    final parts = _name.text.trim().split(' ');
+    try {
+      final token = ref.read(backendAuthProvider.notifier).accessToken;
+      await ref.read(apiClientProvider).put(
+        'specialists/me',
+        {
+          'first_name': parts.isNotEmpty ? parts.first : _name.text.trim(),
+          'last_name': parts.length > 1 ? parts.sublist(1).join(' ') : '',
+          'title': 'Психолог',
+          'works_with': _expertise.toList(),
+          'approaches': const <String>[],
+          'years_experience': int.tryParse(_exp.text.trim()) ?? 0,
+          'languages': const ['Русский'],
+          'session_price_kzt': 15000,
+        },
+        token: token,
+      );
+      ref.invalidate(specialistsProvider);
+    } catch (_) {/* profile can be edited later in the cabinet */}
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Заявка отправлена на проверку. Мы свяжемся с вами.')),
+          content: Text('Профиль создан. Клиенты теперь могут вас найти.')),
     );
     context.go('/home');
   }

@@ -10,7 +10,9 @@ import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
 
 class ChatListScreen extends ConsumerWidget {
-  const ChatListScreen({super.key});
+  final bool showBack;
+  final String? title;
+  const ChatListScreen({super.key, this.showBack = true, this.title});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,18 +25,19 @@ class ChatListScreen extends ConsumerWidget {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
+                padding: EdgeInsets.fromLTRB(showBack ? 8 : 20, 8, 20, 8),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: Icon(Icons.arrow_back_ios_new_rounded,
-                          color: t.text, size: 18),
-                    ),
-                    Text(s.chats,
+                    if (showBack)
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: Icon(Icons.arrow_back_ios_new_rounded,
+                            color: t.text, size: 18),
+                      ),
+                    Text(title ?? s.chats,
                         style: TextStyle(
                           color: t.text,
-                          fontSize: 22,
+                          fontSize: showBack ? 22 : 24,
                           fontWeight: FontWeight.w600,
                           letterSpacing: -0.4,
                         )),
@@ -103,7 +106,7 @@ class _ChatTile extends StatelessWidget {
       child: Row(
         children: [
           GradientAvatar(
-            initials: chat.specialistInitials,
+            initials: chat.otherInitials,
             gradient: chat.gradient,
             size: 52,
             radius: 16,
@@ -117,7 +120,7 @@ class _ChatTile extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(chat.specialistName,
+                      child: Text(chat.otherName,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: t.text,

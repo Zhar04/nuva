@@ -178,6 +178,10 @@ class ApiConversation {
   final MsgSender? lastSender;
   final int unread;
   final DateTime updatedAt;
+  final bool viewerIsSpecialist; // I am the psychologist in this thread
+  final String clientName; // the seeker's name (for the psychologist's view)
+  final bool callRequested;
+  final bool callAccepted;
   const ApiConversation({
     required this.id,
     required this.specialistId,
@@ -189,7 +193,21 @@ class ApiConversation {
     required this.lastSender,
     required this.unread,
     required this.updatedAt,
+    this.viewerIsSpecialist = false,
+    this.clientName = 'Клиент',
+    this.callRequested = false,
+    this.callAccepted = false,
   });
+
+  /// Name of the other party from the viewer's angle.
+  String get otherName => viewerIsSpecialist ? clientName : specialistName;
+  String get otherInitials {
+    final n = otherName.trim();
+    if (n.isEmpty) return '·';
+    final parts = n.split(' ');
+    return (parts[0].isNotEmpty ? parts[0][0] : '') +
+        (parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '');
+  }
 
   factory ApiConversation.fromJson(Map<String, dynamic> m) {
     final sp = (m['specialist'] ?? const {}) as Map<String, dynamic>;
@@ -214,6 +232,10 @@ class ApiConversation {
       unread: (m['unread_count'] as num?)?.toInt() ?? 0,
       updatedAt: DateTime.tryParse('${m['updated_at']}')?.toLocal() ??
           DateTime.now(),
+      viewerIsSpecialist: (m['viewer_is_specialist'] as bool?) ?? false,
+      clientName: (m['client_name'] ?? 'Клиент') as String,
+      callRequested: (m['call_requested'] as bool?) ?? false,
+      callAccepted: (m['call_accepted'] as bool?) ?? false,
     );
   }
 }

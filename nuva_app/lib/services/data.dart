@@ -215,6 +215,39 @@ final moodHistoryProvider = FutureProvider<List<MoodEntry>>((ref) async {
   }
 });
 
+/// The signed-in psychologist's own catalog profile (`/specialists/me`).
+/// Returns the parsed Specialist, or null if they haven't created one yet.
+final specialistMeProvider = FutureProvider<Specialist?>((ref) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return null;
+  final api = ref.watch(apiClientProvider);
+  try {
+    final m = await api.get('specialists/me', token: token);
+    if (m['exists'] != true) return null;
+    return Specialist.fromMap(m);
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Sessions booked WITH the signed-in psychologist (`/bookings/incoming`).
+final incomingBookingsProvider =
+    FutureProvider<List<AppBooking>>((ref) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  final api = ref.watch(apiClientProvider);
+  try {
+    final rows = await api.getList('bookings/incoming', token: token);
+    return rows
+        .map((m) => AppBooking.fromJson(m as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
+  }
+});
+
 /// The current user's bookings from the backend (`/api/v1/bookings/`).
 final bookingsProvider = FutureProvider<List<AppBooking>>((ref) async {
   ref.watch(backendAuthProvider); // refresh on sign-in / sign-out

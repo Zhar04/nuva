@@ -8,9 +8,11 @@ import 'package:go_router/go_router.dart';
 import '../l10n/strings.dart';
 import '../services/backend_auth.dart';
 import '../theme/theme.dart';
+import 'chat_list_screen.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
+import 'psy_screens.dart';
 import 'specialists_screen.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -37,32 +39,49 @@ class _MainShellState extends ConsumerState<MainShell> {
       });
     }
 
-    final pages = const [
-      HomeScreen(),
-      SpecialistsScreen(showBack: false),
-      CommunityScreen(),
-      _CalmScreen(),
-      ProfileScreen(),
-    ];
+    // The app is a different product for psychologists — they don't search for
+    // specialists, they run their cabinet (sessions, clients, profile).
+    final isPsy = auth.user?.isPsychologist ?? false;
+    final List<Widget> pages = isPsy
+        ? const [
+            PsyTodayScreen(),
+            ChatListScreen(showBack: false, title: 'Клиенты'),
+            PsyProfileScreen(),
+          ]
+        : const [
+            HomeScreen(),
+            SpecialistsScreen(showBack: false),
+            CommunityScreen(),
+            _CalmScreen(),
+            ProfileScreen(),
+          ];
+    final List<(IconData, String)> items = isPsy
+        ? const [
+            (Icons.today_rounded, 'Сегодня'),
+            (Icons.people_alt_rounded, 'Клиенты'),
+            (Icons.person_rounded, 'Профиль'),
+          ]
+        : [
+            (Icons.home_rounded, s.tabHome),
+            (Icons.search_rounded, s.tabSpecialists),
+            (Icons.forum_rounded, s.tabCommunity),
+            (Icons.spa_rounded, s.tabCalm),
+            (Icons.person_rounded, s.tabProfile),
+          ];
+    final idx = _idx.clamp(0, items.length - 1);
 
     return Scaffold(
       extendBody: true,
       body: Stack(
         children: [
-          IndexedStack(index: _idx, children: pages),
+          IndexedStack(index: idx, children: pages),
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: _LiquidNavBar(
-              index: _idx,
-              items: [
-                (Icons.home_rounded, s.tabHome),
-                (Icons.search_rounded, s.tabSpecialists),
-                (Icons.forum_rounded, s.tabCommunity),
-                (Icons.spa_rounded, s.tabCalm),
-                (Icons.person_rounded, s.tabProfile),
-              ],
+              index: idx,
+              items: items,
               onTap: (i) => setState(() => _idx = i),
             ),
           ),

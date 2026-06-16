@@ -45,6 +45,18 @@ class ApiClient {
       _decode(await http.patch(_u(path),
           headers: _headers(token), body: jsonEncode(body)));
 
+  Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body,
+          {String? token}) async =>
+      _decode(await http.put(_u(path),
+          headers: _headers(token), body: jsonEncode(body)));
+
+  Future<void> delete(String path, {String? token}) async {
+    final res = await http.delete(_u(path), headers: _headers(token));
+    if (res.statusCode >= 400) {
+      throw ApiException(res.statusCode, const {});
+    }
+  }
+
   Map<String, String> _headers(String? token) => {
         'content-type': 'application/json',
         if (token != null) 'authorization': 'Bearer $token',
