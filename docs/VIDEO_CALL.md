@@ -17,8 +17,12 @@ prejoin, задать имя участника, спрятать «пригла
 
 ## Что мы уже применили (бесплатно, в коде)
 
-В [video_call_screen.dart](../nuva_app/lib/screens/video_call_screen.dart) добавлены
-рабочие в 2026 параметры:
+Поскольку `meet.ffmuc.net` теперь возвращает «refused to connect» при встраивании
+в iframe, [video_call_screen.dart](../nuva_app/lib/screens/video_call_screen.dart)
+**больше не встраивает звонок через iframe** — показывает экран-лаунчер с
+кнопкой «Войти в видеозвонок», которая открывает комнату **в новой вкладке**
+(там Jitsi работает нормально, т.к. блокируется только iframe-embedding). К URL
+комнаты добавлены рабочие в 2026 параметры:
 
 - `config.disableDeepLinking=true` — без навязывания «откройте приложение»;
 - `config.prejoinConfig.enabled=true` — экран проверки микро/камеры перед сессией;
