@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/data.dart';
 import '../theme/theme.dart';
+import 'nuva_logo.dart';
 
 /// A heart + count that toggles a like through [likeProvider] (single source of
 /// truth, server-reconciled). [likeKey] is e.g. `"post:5"` / `"reply:3"`;
@@ -47,10 +48,11 @@ class LikeButton extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            liked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+          NuvaHeartIcon(
             size: iconSize,
             color: liked ? active : t.textSec,
+            filled: liked,
+            strokeWidth: 2,
           ),
           const SizedBox(width: 6),
           Text(

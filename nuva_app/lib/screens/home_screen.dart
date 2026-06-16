@@ -373,45 +373,60 @@ class _PrimaryAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
-    return GlassCard(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      elevated: true,
-      radius: 20,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [t.blue, t.teal],
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [t.blue, t.blueDeep],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: t.blue.withValues(alpha: t.dark ? 0.34 : 0.28),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.20),
+                borderRadius: BorderRadius.circular(13),
               ),
-              borderRadius: BorderRadius.circular(13),
+              child: Icon(icon, color: Colors.white, size: 22),
             ),
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: TextStyle(
-                      color: t.text,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    )),
-                const SizedBox(height: 2),
-                Text(sub,
-                    style: TextStyle(color: t.textSec, fontSize: 12.5)),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                      )),
+                  const SizedBox(height: 2),
+                  Text(sub,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          fontSize: 12.5)),
+                ],
+              ),
             ),
-          ),
-          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: t.textTer),
-        ],
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 13, color: Colors.white.withValues(alpha: 0.8)),
+          ],
+        ),
       ),
     );
   }

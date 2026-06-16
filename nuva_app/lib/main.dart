@@ -47,12 +47,13 @@ class NuvaApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(langProvider);
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Nuva',
       debugShowCheckedModeBanner: false,
       theme: NuvaTheme.light(),
       darkTheme: NuvaTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: router,
       locale: lang.locale,
       supportedLocales: const [

@@ -1,5 +1,4 @@
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../screens/auth_screen.dart';
 import '../screens/booking_screen.dart';
@@ -20,15 +19,14 @@ import '../screens/profile_subscreens.dart';
 import '../screens/progress_screen.dart';
 import '../screens/role_select_screen.dart';
 import '../screens/specialists_screen.dart';
+import '../screens/splash_screen.dart';
 import '../screens/video_call_screen.dart';
 
 Future<GoRouter> buildRouter() async {
-  final prefs = await SharedPreferences.getInstance();
-  final onboarded = prefs.getBool('onboarded') ?? false;
-
   return GoRouter(
-    initialLocation: onboarded ? '/auth' : '/',
+    initialLocation: '/splash',
     routes: [
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),
       GoRoute(
         path: '/auth',

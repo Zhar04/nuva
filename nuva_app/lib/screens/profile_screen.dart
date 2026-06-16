@@ -85,6 +85,23 @@ class ProfileScreen extends ConsumerWidget {
                   },
                 ),
                 _MenuItem(
+                  icon: Icons.brightness_6_outlined,
+                  label: 'Тема',
+                  trailing: switch (ref.watch(themeModeProvider)) {
+                    ThemeMode.light => 'Светлая',
+                    ThemeMode.dark => 'Тёмная',
+                    _ => 'Системная',
+                  },
+                  onTap: () {
+                    final next = switch (ref.read(themeModeProvider)) {
+                      ThemeMode.system => ThemeMode.light,
+                      ThemeMode.light => ThemeMode.dark,
+                      ThemeMode.dark => ThemeMode.system,
+                    };
+                    ref.read(themeModeProvider.notifier).set(next);
+                  },
+                ),
+                _MenuItem(
                   icon: Icons.notifications_none_rounded,
                   label: s.notifications,
                   onTap: () => context.push('/notifications'),
