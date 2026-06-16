@@ -16,7 +16,10 @@ class SpecialistListView(generics.ListAPIView):
     serializer_class = SpecialistListSerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = None
-    queryset = Specialist.objects.filter(is_active=True)
+    # Only verified psychologists are shown to clients. A freshly self-registered
+    # psychologist stays hidden (and unbookable) until an admin checks their
+    # documents and flips is_verified.
+    queryset = Specialist.objects.filter(is_active=True, is_verified=True)
 
 
 class SpecialistDetailView(generics.RetrieveAPIView):

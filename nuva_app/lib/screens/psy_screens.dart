@@ -12,6 +12,52 @@ import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
 import '../widgets/user_avatar.dart';
 
+/// Banner shown across the psychologist cabinet while their profile is still
+/// awaiting document verification. Until an admin flips is_verified, the
+/// psychologist is hidden from the client catalog and cannot receive bookings.
+class _VerifyBanner extends StatelessWidget {
+  const _VerifyBanner();
+
+  static const _amber = Color(0xFFE8A33D);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _amber.withValues(alpha: 0.12),
+        border: Border.all(color: _amber.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.hourglass_top_rounded, color: _amber, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Профиль на проверке',
+                    style: TextStyle(
+                        color: t.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(
+                  'Мы проверяем ваши документы. Пока вы не видны клиентам '
+                  'в каталоге и не принимаете записи.',
+                  style: TextStyle(color: t.textSec, fontSize: 12.5, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Psychologist "Сегодня": greeting + the sessions clients booked with them.
 class PsyTodayScreen extends ConsumerWidget {
   const PsyTodayScreen({super.key});
@@ -23,6 +69,7 @@ class PsyTodayScreen extends ConsumerWidget {
     final name = (user?.name.trim().isNotEmpty ?? false)
         ? user!.name.trim()
         : 'специалист';
+    final me = ref.watch(specialistMeProvider).valueOrNull;
     final async = ref.watch(incomingBookingsProvider);
 
     return Scaffold(
@@ -48,6 +95,11 @@ class PsyTodayScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              if (me != null && !me.isVerified)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  child: _VerifyBanner(),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
                 child: Text('ВАШИ СЕССИИ',
@@ -284,7 +336,11 @@ class PsyProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
+              if (me != null && !me.isVerified) ...[
+                const _VerifyBanner(),
+                const SizedBox(height: 16),
+              ],
               Text('ВАШ ПРОФИЛЬ В КАТАЛОГЕ',
                   style: TextStyle(
                       color: t.textTer,

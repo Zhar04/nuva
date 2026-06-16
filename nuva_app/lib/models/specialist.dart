@@ -25,6 +25,10 @@ class Specialist {
   /// Soft gradient palette for placeholder avatar.
   final List<Color> avatarGradient;
 
+  /// Moderation status: a self-registered psychologist is hidden from clients
+  /// until an admin verifies their documents. Mock/demo specialists are verified.
+  final bool isVerified;
+
   const Specialist({
     required this.id,
     required this.firstName,
@@ -44,6 +48,7 @@ class Specialist {
     required this.availableDates,
     required this.availableSlots,
     required this.avatarGradient,
+    this.isVerified = true,
   });
 
   String get fullName => '$firstName $lastName';
@@ -86,6 +91,7 @@ class Specialist {
       avatarGradient: grad.length >= 2
           ? grad.map(hexToColor).toList()
           : const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
+      isVerified: (m['is_verified'] as bool?) ?? false,
     );
   }
 }

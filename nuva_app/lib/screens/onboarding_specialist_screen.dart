@@ -171,7 +171,9 @@ class _State extends ConsumerState<OnboardingSpecialistScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Профиль создан. Клиенты теперь могут вас найти.')),
+          content: Text(
+              'Профиль отправлен на проверку. После подтверждения документов '
+              'вы появитесь в каталоге.')),
     );
     context.go('/home');
   }
