@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
+import '../models/booking.dart';
 import '../models/specialist.dart';
 import '../services/backend_auth.dart';
 import '../services/data.dart';
@@ -27,6 +28,7 @@ class HomeScreen extends ConsumerWidget {
           child: RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(specialistsProvider);
+              ref.invalidate(bookingsProvider);
               await ref.read(specialistsProvider.future);
             },
             color: t.blue,
@@ -70,7 +72,7 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 _MoodRow(),
                 const SizedBox(height: 20),
-                _UpcomingSession(),
+                _MyBookings(),
                 const SizedBox(height: 18),
                 SectionLabel(label: 'Быстрые действия'),
                 _PrimaryAction(
@@ -270,6 +272,294 @@ class _MoodRowState extends ConsumerState<_MoodRow> {
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+/// Real booking statuses for the client: a confirmed request awaiting payment,
+/// a declined request (with the psychologist's reason / proposed time), and
+/// upcoming confirmed sessions. Falls back to a soft placeholder when empty.
+class _MyBookings extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = ref.watch(bookingsProvider).valueOrNull ?? const <AppBooking>[];
+    final now = DateTime.now();
+    final awaiting = all.where((b) => b.isAwaitingPayment).toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    final declined = all.where((b) => b.isDeclined).toList()
+      ..sort((a, b) => b.startsAt.compareTo(a.startsAt));
+    final upcoming = all
+        .where((b) => b.isConfirmed && b.startsAt.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+
+    if (awaiting.isEmpty && declined.isEmpty && upcoming.isEmpty) {
+      return _UpcomingSession();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionLabel(label: 'Мои записи'),
+        for (final b in awaiting) ...[
+          _AwaitingPaymentCard(booking: b),
+          const SizedBox(height: 10),
+        ],
+        for (final b in declined.take(2)) ...[
+          _DeclinedCard(booking: b),
+          const SizedBox(height: 10),
+        ],
+        for (final b in upcoming.take(3)) ...[
+          _ConfirmedCard(booking: b),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _AwaitingPaymentCard extends StatelessWidget {
+  final AppBooking booking;
+  const _AwaitingPaymentCard({required this.booking});
+
+  static const _amber = Color(0xFFE8A33D);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final when = DateFormat('d MMMM · HH:mm', 'ru').format(booking.startsAt);
+    final total = NumberFormat.currency(
+            locale: 'ru_KZ', symbol: '₸', decimalDigits: 0)
+        .format(booking.priceKzt + booking.serviceFeeKzt);
+    return GlassCard(
+      elevated: true,
+      radius: 20,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _amber.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.check_circle_rounded, color: _amber, size: 12),
+                    SizedBox(width: 5),
+                    Text('ЗАПРОС ПОДТВЕРЖДЁН',
+                        style: TextStyle(
+                          color: _amber,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        )),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Text(when,
+                  style: TextStyle(
+                      color: t.text, fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              GradientAvatar(
+                initials: booking.specialistInitials.isNotEmpty
+                    ? booking.specialistInitials
+                    : 'П',
+                gradient: booking.gradient,
+                size: 42,
+                radius: 13,
+                fontSize: 15,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(booking.specialistName,
+                        style: TextStyle(
+                            color: t.text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                    Text('${booking.formatLabel} · ждёт оплаты',
+                        style: TextStyle(color: t.textSec, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: () => context.push('/payment/${booking.id}',
+                  extra: booking),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: t.blue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.lock_rounded, size: 16),
+                  const SizedBox(width: 8),
+                  Text('Оплатить · $total',
+                      style: const TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeclinedCard extends StatelessWidget {
+  final AppBooking booking;
+  const _DeclinedCard({required this.booking});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final proposed = booking.proposedStartsAt;
+    return GlassCard(
+      radius: 18,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: t.textSec, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                    'Запрос к ${booking.specialistName} не подтверждён',
+                    style: TextStyle(
+                        color: t.text,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          if (booking.declineReason.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('Причина: ${booking.declineReason}',
+                style: TextStyle(color: t.textSec, fontSize: 12.5, height: 1.4)),
+          ],
+          if (proposed != null) ...[
+            const SizedBox(height: 6),
+            Text(
+                'Психолог предложил: '
+                '${DateFormat('d MMMM · HH:mm', 'ru').format(proposed)}',
+                style: TextStyle(color: t.teal, fontSize: 12.5)),
+          ],
+          if (booking.specialistId != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: OutlinedButton(
+                onPressed: () =>
+                    context.push('/booking/${booking.specialistId}'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: t.blue,
+                  side: BorderSide(color: t.glassBorder),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13)),
+                ),
+                child: const Text('Выбрать другое время'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfirmedCard extends StatelessWidget {
+  final AppBooking booking;
+  const _ConfirmedCard({required this.booking});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final when = DateFormat('d MMMM · HH:mm', 'ru').format(booking.startsAt);
+    final convId = booking.conversationId;
+    return GlassCard(
+      onTap: convId == null ? null : () => context.push('/chats/$convId'),
+      elevated: true,
+      radius: 18,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          GradientAvatar(
+            initials: booking.specialistInitials.isNotEmpty
+                ? booking.specialistInitials
+                : 'П',
+            gradient: booking.gradient,
+            size: 42,
+            radius: 13,
+            fontSize: 15,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(booking.specialistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: t.text,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(width: 6),
+                    if (booking.isIntro)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: t.teal.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text('Бесплатно',
+                            style: TextStyle(
+                                color: t.teal,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text('$when · ${booking.formatLabel}',
+                    style: TextStyle(color: t.textSec, fontSize: 12)),
+              ],
+            ),
+          ),
+          Icon(Icons.chat_bubble_outline_rounded, color: t.blue, size: 20),
+        ],
       ),
     );
   }

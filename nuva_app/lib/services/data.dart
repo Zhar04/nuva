@@ -6,6 +6,7 @@ import '../models/chat.dart';
 import '../models/community.dart';
 import '../models/gamification.dart';
 import '../models/specialist.dart';
+import 'api_client.dart';
 import 'auth_service.dart';
 import 'backend_auth.dart' show apiClientProvider, backendAuthProvider;
 import 'db_service.dart';
@@ -263,3 +264,62 @@ final bookingsProvider = FutureProvider<List<AppBooking>>((ref) async {
     return const [];
   }
 });
+
+/// The psychologist's private card for one client (`/bookings/clients/{id}`):
+/// concern, session history, a private note and a coarse mood trend.
+final clientCardProvider =
+    FutureProvider.family<ClientCard?, int>((ref, clientId) async {
+  ref.watch(backendAuthProvider);
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return null;
+  final api = ref.watch(apiClientProvider);
+  try {
+    final m = await api.get('bookings/clients/$clientId', token: token);
+    return ClientCard.fromJson(m);
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Psychologist-side write actions on bookings (accept / decline / save note)
+/// and the client-side pay action. Centralised so screens don't repeat the
+/// token+endpoint plumbing.
+class PsyActions {
+  final Ref ref;
+  PsyActions(this.ref);
+
+  String? get _token => ref.read(backendAuthProvider.notifier).accessToken;
+  ApiClient get _api => ref.read(apiClientProvider);
+
+  Future<void> accept(int bookingId) async {
+    await _api.post('bookings/$bookingId/accept', const {}, token: _token);
+    ref.invalidate(incomingBookingsProvider);
+  }
+
+  Future<void> decline(int bookingId,
+      {String reason = '', DateTime? proposed}) async {
+    await _api.post(
+      'bookings/$bookingId/decline',
+      {
+        'reason': reason,
+        if (proposed != null)
+          'proposed_starts_at': proposed.toUtc().toIso8601String(),
+      },
+      token: _token,
+    );
+    ref.invalidate(incomingBookingsProvider);
+  }
+
+  Future<void> pay(int bookingId) async {
+    await _api.post('bookings/$bookingId/pay', const {'provider': 'mock'},
+        token: _token);
+    ref.invalidate(bookingsProvider);
+  }
+
+  Future<void> saveClientNote(int clientId, String text) async {
+    await _api.put('bookings/clients/$clientId', {'text': text}, token: _token);
+    ref.invalidate(clientCardProvider(clientId));
+  }
+}
+
+final psyActionsProvider = Provider<PsyActions>((ref) => PsyActions(ref));

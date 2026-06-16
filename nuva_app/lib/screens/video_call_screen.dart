@@ -23,16 +23,30 @@ class VideoCallScreen extends ConsumerWidget {
     return (v != null && v.isNotEmpty) ? v : 'meet.ffmuc.net';
   }
 
+  // Toolbar trimmed to what a therapy session needs (no invite/recording/etc).
+  static const _toolbar =
+      '["microphone","camera","tileview","chat","raisehand","hangup","fullscreen","settings"]';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.read(backendAuthProvider).user?.name.trim() ?? '';
     final display = name.isEmpty ? 'Гость' : name;
     final room = 'nuva${roomSeed.replaceAll(RegExp(r'[^A-Za-z0-9]'), '')}';
+    // Free customizations that the public config whitelist still honours in
+    // 2026: display name, no deep-link nag, a calm prejoin (mic/cam check —
+    // good before a session), hidden invite, a trimmed toolbar and a dark teal
+    // background. NB: removing the Jitsi watermark / recolouring the UI needs a
+    // self-host or JaaS — see docs/VIDEO_CALL.md.
     final url = 'https://$_domain/$room'
         '#userInfo.displayName=${Uri.encodeComponent('"$display"')}'
         '&config.disableDeepLinking=true'
-        '&config.prejoinPageEnabled=true'
-        '&interfaceConfig.MOBILE_APP_PROMO=false';
+        '&config.prejoinConfig.enabled=true'
+        '&config.disableInviteFunctions=true'
+        '&config.toolbarButtons=${Uri.encodeComponent(_toolbar)}'
+        '&interfaceConfig.DEFAULT_BACKGROUND=${Uri.encodeComponent("#0B1F2A")}'
+        '&interfaceConfig.DISABLE_VIDEO_BACKGROUND=true'
+        '&interfaceConfig.MOBILE_APP_PROMO=false'
+        '&interfaceConfig.SHOW_JITSI_WATERMARK=false';
 
     return Scaffold(
       backgroundColor: Colors.black,

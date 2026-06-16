@@ -5,19 +5,22 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/strings.dart';
+import '../models/booking.dart';
 import '../services/api_client.dart';
-import '../services/backend_auth.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
 import '../widgets/glass.dart';
-import 'booking_screen.dart';
 
 enum PayMethod { card, kaspi, apple, google }
 
+/// Pays a session the psychologist has already CONFIRMED (status
+/// `pending_payment`). Reached from the client's "Запрос подтверждён — ждёт
+/// оплаты" surface. The acquirer is still mocked; the real action is the
+/// `bookings/{id}/pay` transition.
 class PaymentScreen extends ConsumerStatefulWidget {
-  final BookingDraft draft;
-  const PaymentScreen({super.key, required this.draft});
+  final AppBooking booking;
+  const PaymentScreen({super.key, required this.booking});
 
   @override
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
@@ -26,6 +29,7 @@ class PaymentScreen extends ConsumerStatefulWidget {
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   PayMethod _method = PayMethod.kaspi;
   bool _processing = false;
+  bool _done = false;
 
   // Card form
   final _card = TextEditingController();
@@ -44,54 +48,41 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   Future<void> _pay() async {
     setState(() => _processing = true);
-    final d = widget.draft;
-    // Booking creation is the real action (the "payment" is a mock), so a
-    // failure must be visible — we don't fake a success screen.
     try {
-      final token = ref.read(backendAuthProvider.notifier).accessToken;
-      await ref.read(apiClientProvider).post(
-        'bookings/',
-        {
-          'specialist': int.tryParse(d.specialist.id),
-          'starts_at': '${d.dateIso}T${d.time}:00',
-          'format': d.format.name,
-          'price_kzt': d.specialist.sessionPriceKzt,
-        },
-        token: token,
-      );
-      ref.invalidate(bookingsProvider);
+      await ref.read(psyActionsProvider).pay(widget.booking.id);
     } catch (e) {
       if (!mounted) return;
       setState(() => _processing = false);
-      final token = ref.read(backendAuthProvider.notifier).accessToken;
-      final msg = e is ApiException
-          ? 'Ошибка ${e.status}: ${e.message}'
-          : token == null
-              ? 'Нет входа в аккаунт (токен пуст). Войдите заново.'
-              : 'Сеть/CORS: $e';
+      final msg =
+          e is ApiException ? 'Ошибка ${e.status}: ${e.message}' : 'Сеть: $e';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         backgroundColor: context.nuva.danger,
-        duration: const Duration(seconds: 8),
+        duration: const Duration(seconds: 6),
         content: Text(msg, style: const TextStyle(color: Colors.white)),
       ));
       return;
     }
-    await Future.delayed(const Duration(milliseconds: 700));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
-    setState(() => _processing = false);
-    context.go('/payment-success', extra: widget.draft);
+    setState(() {
+      _processing = false;
+      _done = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(ref);
     final t = context.nuva;
-    final total = widget.draft.specialist.sessionPriceKzt + 1000;
+    final b = widget.booking;
+    final total = b.priceKzt + b.serviceFeeKzt;
     final priceLabel = NumberFormat.currency(
       locale: 'ru_KZ',
       symbol: '₸',
       decimalDigits: 0,
     ).format(total);
+
+    if (_done) return _PaidView(booking: b);
 
     return Scaffold(
       body: GlassBackdrop(
@@ -105,12 +96,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _OrderSummary(draft: widget.draft),
+                      _OrderSummary(booking: b),
                       const SizedBox(height: 22),
                       SectionLabel(label: s.paymentMethod),
                       _MethodTile(
                         title: s.payWithKaspi,
-                        subtitle: 'Kaspi Gold · ${_method == PayMethod.kaspi ? "•••• 4128" : ""}',
+                        subtitle:
+                            'Kaspi Gold · ${_method == PayMethod.kaspi ? "•••• 4128" : ""}',
                         color: const Color(0xFFEF3124),
                         icon: Icons.account_balance_wallet_rounded,
                         selected: _method == PayMethod.kaspi,
@@ -126,12 +118,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                         selected: _method == PayMethod.card,
                         onTap: () => setState(() => _method = PayMethod.card),
                       ),
-                      if (_method == PayMethod.card) _CardForm(
-                        card: _card,
-                        exp: _exp,
-                        cvv: _cvv,
-                        name: _name,
-                      ),
+                      if (_method == PayMethod.card)
+                        _CardForm(card: _card, exp: _exp, cvv: _cvv, name: _name),
                       const SizedBox(height: 10),
                       _MethodTile(
                         title: s.payWithApple,
@@ -169,6 +157,86 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 }
 
+/// Success view shown in place after the pay transition lands.
+class _PaidView extends StatelessWidget {
+  final AppBooking booking;
+  const _PaidView({required this.booking});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final when =
+        DateFormat('d MMMM · HH:mm', 'ru').format(booking.startsAt);
+    return Scaffold(
+      body: GlassBackdrop(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Spacer(),
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [t.teal, t.blue]),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: t.teal.withValues(alpha: 0.45),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.check_rounded,
+                      color: Colors.white, size: 56),
+                ),
+                const SizedBox(height: 22),
+                Text('Оплачено',
+                    style: TextStyle(
+                      color: t.text,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.4,
+                    )),
+                const SizedBox(height: 8),
+                Text(
+                  'Сессия с ${booking.specialistName} закреплена за вами — '
+                  '$when. Откройте её из записей или чата.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: t.textSec, fontSize: 14, height: 1.5),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: () => context.go('/home'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: t.blue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Text('На главную'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
   final String title;
   const _Header({required this.title});
@@ -201,8 +269,8 @@ class _Header extends StatelessWidget {
 }
 
 class _OrderSummary extends ConsumerWidget {
-  final BookingDraft draft;
-  const _OrderSummary({required this.draft});
+  final AppBooking booking;
+  const _OrderSummary({required this.booking});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -211,7 +279,7 @@ class _OrderSummary extends ConsumerWidget {
     final fmt = NumberFormat.currency(
         locale: 'ru_KZ', symbol: '₸', decimalDigits: 0);
     final dateLabel =
-        DateFormat('d MMMM, EEEE', 'ru').format(DateTime.parse(draft.dateIso));
+        DateFormat('d MMMM, EEEE', 'ru').format(booking.startsAt);
 
     Widget row(String l, String v, {bool bold = false}) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
@@ -244,8 +312,10 @@ class _OrderSummary extends ConsumerWidget {
           Row(
             children: [
               GradientAvatar(
-                initials: draft.specialist.initials,
-                gradient: draft.specialist.avatarGradient,
+                initials: booking.specialistInitials.isNotEmpty
+                    ? booking.specialistInitials
+                    : 'П',
+                gradient: booking.gradient,
                 size: 44,
                 radius: 12,
                 fontSize: 16,
@@ -255,14 +325,14 @@ class _OrderSummary extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(draft.specialist.fullName,
+                    Text(booking.specialistName,
                         style: TextStyle(
                           color: t.text,
                           fontSize: 14.5,
                           fontWeight: FontWeight.w600,
                         )),
-                    Text(draft.specialist.title,
-                        style: TextStyle(color: t.textSec, fontSize: 12)),
+                    Text('Подтверждено · ждёт оплаты',
+                        style: TextStyle(color: t.teal, fontSize: 12)),
                   ],
                 ),
               ),
@@ -272,26 +342,20 @@ class _OrderSummary extends ConsumerWidget {
           Container(height: 1, color: t.divider),
           const SizedBox(height: 10),
           row(s.pickDate, dateLabel),
-          row(s.pickTime, draft.time),
-          row(s.format, _formatLabel(draft.format, s)),
-          row(s.sessionPrice, fmt.format(draft.specialist.sessionPriceKzt)),
-          row(s.serviceFee, fmt.format(1000)),
+          row(s.pickTime, DateFormat('HH:mm').format(booking.startsAt)),
+          row(s.format, booking.formatLabel),
+          row(s.sessionPrice, fmt.format(booking.priceKzt)),
+          row(s.serviceFee, fmt.format(booking.serviceFeeKzt)),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Container(height: 1, color: t.divider),
           ),
-          row(s.total, fmt.format(draft.specialist.sessionPriceKzt + 1000),
+          row(s.total, fmt.format(booking.priceKzt + booking.serviceFeeKzt),
               bold: true),
         ],
       ),
     );
   }
-
-  String _formatLabel(SessionFormat f, S s) => switch (f) {
-        SessionFormat.video => s.video,
-        SessionFormat.audio => s.audio,
-        SessionFormat.chat => s.chat,
-      };
 }
 
 class _MethodTile extends StatelessWidget {
@@ -462,7 +526,7 @@ class _CardForm extends ConsumerWidget {
                 Expanded(
                   child: TextField(
                     controller: exp,
-                    decoration: deco(s.expiry + ' · MM/YY'),
+                    decoration: deco('${s.expiry} · MM/YY'),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,

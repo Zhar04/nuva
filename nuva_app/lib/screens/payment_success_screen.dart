@@ -12,7 +12,12 @@ import 'booking_screen.dart';
 
 class PaymentSuccessScreen extends ConsumerStatefulWidget {
   final BookingDraft draft;
-  const PaymentSuccessScreen({super.key, required this.draft});
+
+  /// True when this confirms a *request* was sent (booking → request →
+  /// confirmation flow) rather than a completed payment.
+  final bool requested;
+  const PaymentSuccessScreen(
+      {super.key, required this.draft, this.requested = false});
 
   @override
   ConsumerState<PaymentSuccessScreen> createState() =>
@@ -99,7 +104,7 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  s.bookingConfirmed,
+                  widget.requested ? 'Запрос отправлен' : s.bookingConfirmed,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: t.text,
@@ -110,7 +115,11 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  s.successSub,
+                  widget.requested
+                      ? 'Психолог рассмотрит заявку и подтвердит время. '
+                          'Когда подтвердит — увидите её в записях'
+                          '${widget.draft.intent == 'intro' ? '' : ' и сможете оплатить'}.'
+                      : s.successSub,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: t.textSec,
@@ -178,36 +187,38 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen>
                   ),
                 ),
                 const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: _addToCalendar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: t.glassBgUp,
-                      foregroundColor: t.text,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: t.glassBorder),
+                if (!widget.requested) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: _addToCalendar,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: t.glassBgUp,
+                        foregroundColor: t.text,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: t.glassBorder),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_month_rounded,
+                              color: t.text, size: 18),
+                          const SizedBox(width: 8),
+                          Text(s.addToCalendar,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              )),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.calendar_month_rounded,
-                            color: t.text, size: 18),
-                        const SizedBox(width: 8),
-                        Text(s.addToCalendar,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            )),
-                      ],
-                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
                   height: 54,

@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../models/booking.dart';
 import '../screens/auth_screen.dart';
 import '../screens/booking_screen.dart';
 import '../screens/chat_list_screen.dart';
@@ -18,6 +19,8 @@ import '../screens/payment_success_screen.dart';
 import '../screens/profile_edit_screen.dart';
 import '../screens/profile_subscreens.dart';
 import '../screens/progress_screen.dart';
+import '../screens/psy_cabinet_edit_screen.dart';
+import '../screens/psy_client_screen.dart';
 import '../screens/role_select_screen.dart';
 import '../screens/specialists_screen.dart';
 import '../screens/splash_screen.dart';
@@ -59,6 +62,17 @@ Future<GoRouter> buildRouter() async {
       GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
       GoRoute(path: '/mbti', builder: (_, __) => const MbtiScreen()),
 
+      // Psychologist cabinet sub-screens.
+      GoRoute(
+        path: '/psy/cabinet',
+        builder: (_, __) => const PsyCabinetEditScreen(),
+      ),
+      GoRoute(
+        path: '/psy/client/:id',
+        builder: (_, st) => ClientDetailScreen(
+            clientId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0),
+      ),
+
       // Shell tabs (IndexedStack inside).
       GoRoute(path: '/home', builder: (_, __) => const MainShell(initialTab: 0)),
       GoRoute(path: '/specialists', builder: (_, __) => const MainShell(initialTab: 1)),
@@ -80,12 +94,14 @@ Future<GoRouter> buildRouter() async {
       ),
       GoRoute(
         path: '/payment/:id',
-        builder: (_, st) => PaymentScreen(draft: st.extra as BookingDraft),
+        builder: (_, st) => PaymentScreen(booking: st.extra as AppBooking),
       ),
       GoRoute(
         path: '/payment-success',
-        builder: (_, st) =>
-            PaymentSuccessScreen(draft: st.extra as BookingDraft),
+        builder: (_, st) => PaymentSuccessScreen(
+          draft: st.extra as BookingDraft,
+          requested: st.uri.queryParameters['requested'] == '1',
+        ),
       ),
 
       GoRoute(

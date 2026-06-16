@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../l10n/strings.dart';
 import '../models/booking.dart';
 import '../models/chat.dart';
 import '../models/specialist.dart';
@@ -39,6 +40,66 @@ String _greeting() {
 bool _isPaid(AppBooking b) => b.status == 'paid' || b.status == 'completed';
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// Compact theme cycler (System → Light → Dark) for the cabinet header.
+class _PsyThemeSwitch extends ConsumerWidget {
+  const _PsyThemeSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.nuva;
+    final mode = ref.watch(themeModeProvider);
+    final icon = switch (mode) {
+      ThemeMode.light => Icons.light_mode_rounded,
+      ThemeMode.dark => Icons.dark_mode_rounded,
+      _ => Icons.brightness_auto_rounded,
+    };
+    return GlassCard(
+      onTap: () {
+        final next = switch (mode) {
+          ThemeMode.system => ThemeMode.light,
+          ThemeMode.light => ThemeMode.dark,
+          ThemeMode.dark => ThemeMode.system,
+        };
+        ref.read(themeModeProvider.notifier).set(next);
+      },
+      radius: 999,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      elevated: true,
+      child: Icon(icon, size: 16, color: t.blue),
+    );
+  }
+}
+
+/// Compact language cycler (RU → KZ → EN) for the cabinet header.
+class _PsyLangSwitch extends ConsumerWidget {
+  const _PsyLangSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.nuva;
+    final lang = ref.watch(langProvider);
+    return GlassCard(
+      onTap: () {
+        final next = AppLang.values[(lang.index + 1) % AppLang.values.length];
+        ref.read(langProvider.notifier).state = next;
+      },
+      radius: 999,
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      elevated: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.language_rounded, size: 14, color: t.blue),
+          const SizedBox(width: 5),
+          Text(lang.code,
+              style: TextStyle(
+                  color: t.text, fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
 
 /// Shared psychologist screen header (title + optional subtitle + trailing).
 class _SpecHeader extends StatelessWidget {
@@ -233,6 +294,9 @@ class PsyTodayScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const _PsyThemeSwitch(),
+                    const SizedBox(width: 6),
+                    const _PsyLangSwitch(),
                     IconButton(
                       onPressed: () => context.push('/chats'),
                       icon: Icon(Icons.chat_bubble_outline_rounded,
@@ -700,6 +764,22 @@ class _PsyScheduleState extends ConsumerState<PsyScheduleScreen> {
     final me = ref.watch(specialistMeProvider).valueOrNull;
     _hydrate(me);
     final daySlots = _avail[_selDay] ?? <String>{};
+    final bookings =
+        ref.watch(incomingBookingsProvider).valueOrNull ?? const <AppBooking>[];
+    // Dates of the current ISO week (Mon → Sun), so the strip shows real days.
+    final today = DateTime.now();
+    final monday = DateTime(today.year, today.month, today.day)
+        .subtract(Duration(days: today.weekday - 1));
+    final weekDates =
+        List.generate(7, (i) => monday.add(Duration(days: i)));
+    final selDate = weekDates[_selDay - 1];
+    bool onCalendar(AppBooking b) => b.isConfirmed || b.isAwaitingPayment;
+    int sessionsOn(DateTime d) =>
+        bookings.where((b) => onCalendar(b) && _sameDay(b.startsAt, d)).length;
+    final daySessions = bookings
+        .where((b) => onCalendar(b) && _sameDay(b.startsAt, selDate))
+        .toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
     return Scaffold(
       body: GlassBackdrop(
@@ -773,16 +853,18 @@ class _PsyScheduleState extends ConsumerState<PsyScheduleScreen> {
                       children: List.generate(7, (i) {
                         final day = i + 1;
                         final on = day == _selDay;
-                        final count = (_avail[day] ?? const {}).length;
+                        final date = weekDates[i];
+                        final isToday = _sameDay(date, today);
+                        final hasSessions = sessionsOn(date) > 0;
                         return Expanded(
                           child: Padding(
-                            padding: EdgeInsets.only(right: i < 6 ? 7 : 0),
+                            padding: EdgeInsets.only(right: i < 6 ? 6 : 0),
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(() => _selDay = day),
                               child: Container(
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 9),
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
                                   gradient: on
                                       ? LinearGradient(
@@ -794,30 +876,39 @@ class _PsyScheduleState extends ConsumerState<PsyScheduleScreen> {
                                   border: Border.all(
                                       color: on
                                           ? Colors.transparent
-                                          : t.glassBorder),
+                                          : (isToday
+                                              ? t.blue
+                                              : t.glassBorder)),
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(_dayNames[i],
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
                                           color: on
                                               ? Colors.white70
                                               : t.textSec,
                                         )),
-                                    const SizedBox(height: 5),
+                                    const SizedBox(height: 3),
+                                    Text('${date.day}',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: on
+                                              ? Colors.white
+                                              : (isToday ? t.blue : t.text),
+                                        )),
+                                    const SizedBox(height: 4),
                                     Container(
-                                      width: 6,
-                                      height: 6,
+                                      width: 5,
+                                      height: 5,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: count > 0
+                                        color: hasSessions
                                             ? (on ? Colors.white : t.teal)
-                                            : (on
-                                                ? Colors.white24
-                                                : t.glassBorder),
+                                            : Colors.transparent,
                                       ),
                                     ),
                                   ],
@@ -894,6 +985,31 @@ class _PsyScheduleState extends ConsumerState<PsyScheduleScreen> {
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 26),
+                    _SectionLabel(
+                      icon: Icons.people_alt_rounded,
+                      label:
+                          'ЗАПИСИ · ${_dayNames[_selDay - 1]} ${selDate.day}.${selDate.month.toString().padLeft(2, '0')}',
+                      trailing: Text('${daySessions.length}',
+                          style: TextStyle(
+                              color: t.textTer,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                    if (daySessions.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                            'На этот день записей пока нет — подтверждённые '
+                            'заявки появятся здесь.',
+                            style: TextStyle(
+                                color: t.textSec, fontSize: 12.5, height: 1.4)),
+                      )
+                    else
+                      ...daySessions.map((b) => Padding(
+                            padding: const EdgeInsets.only(bottom: 9),
+                            child: _ScheduleSessionRow(booking: b),
+                          )),
                   ],
                 ),
               ),
@@ -905,13 +1021,82 @@ class _PsyScheduleState extends ConsumerState<PsyScheduleScreen> {
   }
 }
 
+/// One confirmed session in the schedule's day view: "09:00 · Имя · формат".
+class _ScheduleSessionRow extends StatelessWidget {
+  final AppBooking booking;
+  const _ScheduleSessionRow({required this.booking});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final paid = booking.isConfirmed && !booking.isAwaitingPayment;
+    final cid = booking.clientId;
+    return GlassCard(
+      elevated: true,
+      radius: 16,
+      onTap: cid == null ? null : () => context.push('/psy/client/$cid'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 46,
+            child: Text(DateFormat('HH:mm').format(booking.startsAt),
+                style: TextStyle(
+                    color: t.text, fontSize: 14, fontWeight: FontWeight.w700)),
+          ),
+          GradientAvatar(
+            initials: booking.clientName.isNotEmpty
+                ? booking.clientName[0].toUpperCase()
+                : 'К',
+            gradient: const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
+            size: 32,
+            radius: 999,
+            fontSize: 13,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(booking.clientName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: t.text,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600)),
+                Text(
+                    '${booking.formatLabel}'
+                    '${booking.isIntro ? ' · ознакомительная' : ''}',
+                    style: TextStyle(color: t.textSec, fontSize: 11.5)),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: (paid ? t.teal : _amber).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(paid ? 'Подтверждена' : 'Ждёт оплаты',
+                style: TextStyle(
+                    color: paid ? t.teal : _amber,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // 3 · Запросы (real call requests + new bookings)
 // ════════════════════════════════════════════════════════════
 class PsyRequestsScreen extends ConsumerWidget {
   const PsyRequestsScreen({super.key});
 
-  Future<void> _accept(WidgetRef ref, int convId) async {
+  Future<void> _acceptCall(WidgetRef ref, int convId) async {
     try {
       final token = ref.read(backendAuthProvider.notifier).accessToken;
       await ref.read(apiClientProvider).post(
@@ -921,6 +1106,57 @@ class PsyRequestsScreen extends ConsumerWidget {
       );
       ref.invalidate(conversationsProvider);
     } catch (_) {}
+  }
+
+  Future<void> _accept(BuildContext context, WidgetRef ref, AppBooking b) async {
+    try {
+      await ref.read(psyActionsProvider).accept(b.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(b.isIntro
+              ? 'Принято — добавлено в расписание'
+              : 'Принято — клиент получит счёт на оплату'),
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: context.nuva.danger,
+          content: Text(e is ApiException ? e.message : 'Не удалось принять',
+              style: const TextStyle(color: Colors.white)),
+        ));
+      }
+    }
+  }
+
+  Future<void> _decline(BuildContext context, WidgetRef ref, AppBooking b) async {
+    final result = await showModalBottomSheet<_DeclineResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DeclineSheet(booking: b),
+    );
+    if (result == null) return;
+    try {
+      await ref.read(psyActionsProvider).decline(
+            b.id,
+            reason: result.reason,
+            proposed: result.proposed,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Заявка отклонена')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: context.nuva.danger,
+          content: Text(e is ApiException ? e.message : 'Не удалось отклонить',
+              style: const TextStyle(color: Colors.white)),
+        ));
+      }
+    }
   }
 
   @override
@@ -933,7 +1169,7 @@ class PsyRequestsScreen extends ConsumerWidget {
     final callReqs = convos
         .where((c) => c.viewerIsSpecialist && c.callRequested && !c.callAccepted)
         .toList();
-    final newBookings = bookings.where((b) => b.isUpcoming).toList()
+    final requests = bookings.where((b) => b.isRequest).toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
     return AutoRefresh(
@@ -947,18 +1183,21 @@ class PsyRequestsScreen extends ConsumerWidget {
           child: SafeArea(
             child: Column(
               children: [
-                const _SpecHeader(
-                    title: 'Запросы', sub: 'Заявки и звонки от клиентов'),
+                _SpecHeader(
+                    title: 'Запросы на подбор',
+                    sub: requests.isEmpty
+                        ? 'Заявки от клиентов'
+                        : '${requests.length} ждут вашего решения'),
                 Expanded(
-                  child: (callReqs.isEmpty && newBookings.isEmpty)
+                  child: (callReqs.isEmpty && requests.isEmpty)
                       ? ListView(
                           children: const [
                             SizedBox(height: 40),
                             _EmptyHint(
                               icon: Icons.inbox_rounded,
                               title: 'Нет новых запросов',
-                              sub: 'Здесь появятся запросы на звонок и новые '
-                                  'записи клиентов.',
+                              sub: 'Заявки клиентов появятся здесь. После '
+                                  'подтверждения сессия перейдёт в Расписание.',
                             ),
                           ],
                         )
@@ -974,20 +1213,29 @@ class PsyRequestsScreen extends ConsumerWidget {
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: _CallRequestCard(
                                       convo: c,
-                                      onAccept: () => _accept(ref, c.id),
+                                      onAccept: () => _acceptCall(ref, c.id),
                                       onChat: () =>
                                           context.push('/chats/${c.id}'),
                                     ),
                                   )),
                               const SizedBox(height: 10),
                             ],
-                            if (newBookings.isNotEmpty) ...[
+                            if (requests.isNotEmpty) ...[
                               const _SectionLabel(
-                                  icon: Icons.event_rounded,
-                                  label: 'ПРЕДСТОЯЩИЕ ЗАПИСИ'),
-                              ...newBookings.map((b) => Padding(
+                                  icon: Icons.person_add_alt_1_rounded,
+                                  label: 'ЗАЯВКИ КЛИЕНТОВ'),
+                              ...requests.map((b) => Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
-                                    child: _BookingRequestCard(booking: b),
+                                    child: _RequestCard(
+                                      booking: b,
+                                      onAccept: () => _accept(context, ref, b),
+                                      onDecline: () =>
+                                          _decline(context, ref, b),
+                                      onOpenClient: b.clientId == null
+                                          ? null
+                                          : () => context.push(
+                                              '/psy/client/${b.clientId}'),
+                                    ),
                                   )),
                             ],
                           ],
@@ -1000,6 +1248,13 @@ class PsyRequestsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Result of the decline sheet: a reason and an optional proposed new time.
+class _DeclineResult {
+  final String reason;
+  final DateTime? proposed;
+  const _DeclineResult(this.reason, this.proposed);
 }
 
 class _CallRequestCard extends StatelessWidget {
@@ -1095,77 +1350,394 @@ class _CallRequestCard extends StatelessWidget {
   }
 }
 
-class _BookingRequestCard extends StatelessWidget {
+/// A rich client request card: avatar, %-match, intent, concern, message, time,
+/// and Accept / Decline. Tapping the header opens the client's card.
+class _RequestCard extends StatelessWidget {
   final AppBooking booking;
-  const _BookingRequestCard({required this.booking});
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  final VoidCallback? onOpenClient;
+  const _RequestCard({
+    required this.booking,
+    required this.onAccept,
+    required this.onDecline,
+    this.onOpenClient,
+  });
 
   @override
   Widget build(BuildContext context) {
     final t = context.nuva;
     final when = DateFormat('d MMMM · HH:mm', 'ru').format(booking.startsAt);
-    final convId = booking.conversationId;
-    final paid = _isPaid(booking);
+    final intro = booking.isIntro;
     return GlassCard(
       elevated: true,
-      radius: 18,
-      padding: const EdgeInsets.all(14),
-      child: Row(
+      radius: 22,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GradientAvatar(
-            initials: booking.clientName.isNotEmpty
-                ? booking.clientName[0].toUpperCase()
-                : 'К',
-            gradient: const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
-            size: 44,
-            radius: 999,
-            fontSize: 17,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          InkWell(
+            onTap: onOpenClient,
+            borderRadius: BorderRadius.circular(12),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(booking.clientName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: t.text,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (paid ? t.teal : _amber).withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(paid ? 'Оплачено' : 'Ожидает',
-                          style: TextStyle(
-                              color: paid ? t.teal : _amber,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                  ],
+                GradientAvatar(
+                  initials: booking.clientName.isNotEmpty
+                      ? booking.clientName[0].toUpperCase()
+                      : 'К',
+                  gradient: const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
+                  size: 48,
+                  radius: 999,
+                  fontSize: 18,
                 ),
-                const SizedBox(height: 2),
-                Text('$when · ${booking.formatLabel} · ${_kzt(booking.priceKzt)}',
-                    style: TextStyle(color: t.textSec, fontSize: 12)),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(booking.clientName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: t.text,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                          if (booking.matchScore > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: t.teal.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text('${booking.matchScore}% совпадение',
+                                  style: TextStyle(
+                                      color: t.teal,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text('$when · ${booking.formatLabel}',
+                          style: TextStyle(color: t.textSec, fontSize: 12.5)),
+                    ],
+                  ),
+                ),
+                if (onOpenClient != null)
+                  Icon(Icons.arrow_forward_ios_rounded,
+                      size: 14, color: t.textTer),
               ],
             ),
           ),
-          IconButton(
-            onPressed: convId == null
-                ? null
-                : () => context.push('/chats/$convId'),
-            icon: Icon(Icons.chat_bubble_outline_rounded,
-                color: t.blue, size: 20),
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              Icon(
+                intro
+                    ? Icons.volunteer_activism_rounded
+                    : Icons.workspace_premium_rounded,
+                size: 16,
+                color: intro ? t.teal : t.blue,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(booking.intentLabel,
+                    style: TextStyle(
+                        color: intro ? t.teal : t.blue,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          if (booking.concern.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.psychology_alt_rounded, size: 15, color: t.textSec),
+                const SizedBox(width: 7),
+                Text('Беспокоит: ',
+                    style: TextStyle(color: t.textSec, fontSize: 12.5)),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: t.glassBgUp,
+                    border: Border.all(color: t.glassBorder),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(booking.concern,
+                      style: TextStyle(
+                          color: t.text,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ],
+          if (booking.clientMessage.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: t.glassBgUp,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text('«${booking.clientMessage}»',
+                  style: TextStyle(
+                      color: t.textSec,
+                      fontSize: 12.5,
+                      height: 1.4,
+                      fontStyle: FontStyle.italic)),
+            ),
+          ],
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onAccept,
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: const Text('Принять'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: t.blue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    minimumSize: const Size(0, 46),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onDecline,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text('Отклонить'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: t.textSec,
+                    side: BorderSide(color: t.glassBorder),
+                    minimumSize: const Size(0, 46),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet to decline a request: a reason (quick chips or free text) and
+/// an optional proposed alternative date/time.
+class _DeclineSheet extends StatefulWidget {
+  final AppBooking booking;
+  const _DeclineSheet({required this.booking});
+
+  @override
+  State<_DeclineSheet> createState() => _DeclineSheetState();
+}
+
+class _DeclineSheetState extends State<_DeclineSheet> {
+  final _reason = TextEditingController();
+  DateTime? _proposed;
+
+  static const _quick = [
+    'Не смогу в это время',
+    'Не моя специализация',
+    'Занят этот день',
+  ];
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTime() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 60)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 12, minute: 0),
+    );
+    if (time == null) return;
+    setState(() => _proposed =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 18,
+        right: 18,
+        top: 10,
+        bottom: 18 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: t.surface,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: t.glassBorder),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: t.glassBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Отклонить заявку',
+                style: TextStyle(
+                    color: t.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('${widget.booking.clientName} получит ваш ответ.',
+                style: TextStyle(color: t.textSec, fontSize: 13)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _quick
+                  .map((q) => GestureDetector(
+                        onTap: () => setState(() => _reason.text = q),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _reason.text == q
+                                ? t.blue.withValues(alpha: 0.14)
+                                : t.glassBgUp,
+                            border: Border.all(
+                                color: _reason.text == q
+                                    ? t.blue
+                                    : t.glassBorder),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(q,
+                              style: TextStyle(
+                                  color: t.text,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _reason,
+              maxLines: 2,
+              style: TextStyle(color: t.text, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Причина (необязательно)…',
+                hintStyle: TextStyle(color: t.textTer, fontSize: 13.5),
+                isDense: true,
+                contentPadding: const EdgeInsets.all(14),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: t.glassBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: t.blue, width: 1.4),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            GlassCard(
+              radius: 14,
+              onTap: _pickTime,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              child: Row(
+                children: [
+                  Icon(Icons.event_repeat_rounded, size: 18, color: t.blue),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _proposed == null
+                          ? 'Предложить другое время'
+                          : 'Предложено: ${DateFormat('d MMMM · HH:mm', 'ru').format(_proposed!)}',
+                      style: TextStyle(
+                          color: _proposed == null ? t.textSec : t.text,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (_proposed != null)
+                    GestureDetector(
+                      onTap: () => setState(() => _proposed = null),
+                      child: Icon(Icons.close_rounded,
+                          size: 18, color: t.textTer),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: t.textSec,
+                      side: BorderSide(color: t.glassBorder),
+                      minimumSize: const Size(0, 50),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text('Назад'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(
+                        _DeclineResult(_reason.text.trim(), _proposed)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: t.danger,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(0, 50),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text('Отклонить'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1199,6 +1771,13 @@ class PsyEarningsScreen extends ConsumerWidget {
     final total = paid.fold<int>(0, (s, b) => s + b.priceKzt);
     final paidCount = paid.length;
     final avg = paidCount > 0 ? (total / paidCount).round() : 0;
+    // Intro (free) sessions count toward a reward milestone every 15.
+    const introGoal = 15;
+    final introCount = bookings
+        .where((b) =>
+            b.isIntro &&
+            (b.status == 'scheduled' || b.status == 'completed'))
+        .length;
 
     return AutoRefresh(
       interval: const Duration(seconds: 10),
@@ -1338,6 +1917,9 @@ class PsyEarningsScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
+                      // intro (free) sessions + reward milestone
+                      _IntroRewardCard(count: introCount, goal: introGoal),
+                      const SizedBox(height: 14),
                       // payout
                       GlassCard(
                         elevated: true,
@@ -1391,6 +1973,93 @@ class PsyEarningsScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Intro (free) sessions counter with progress to the next reward milestone.
+/// Every [goal] free intros earns a monetary reward, so this is tracked.
+class _IntroRewardCard extends StatelessWidget {
+  final int count;
+  final int goal;
+  const _IntroRewardCard({required this.count, required this.goal});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final rewards = count ~/ goal;
+    final inCycle = count % goal;
+    final toGo = goal - inCycle;
+    final progress = inCycle / goal;
+    return GlassCard(
+      elevated: true,
+      radius: 20,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: t.teal.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(Icons.volunteer_activism_rounded,
+                    size: 20, color: t.teal),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ознакомительные · бесплатные',
+                        style: TextStyle(
+                            color: t.text,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600)),
+                    Text('Проведено: $count',
+                        style: TextStyle(color: t.textSec, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Text('$count',
+                  style: TextStyle(
+                      color: t.teal,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress == 0 && count > 0 ? 1 : progress,
+              minHeight: 8,
+              backgroundColor: t.glassBgUp,
+              valueColor: AlwaysStoppedAnimation(t.teal),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.emoji_events_rounded, size: 15, color: _amber),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  rewards > 0
+                      ? 'Награды получены: $rewards · ещё $toGo до следующей'
+                      : 'Ещё $toGo бесплатных сессий до денежного вознаграждения',
+                  style: TextStyle(color: t.textSec, fontSize: 12, height: 1.3),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1545,8 +2214,29 @@ class PsyProfileScreen extends ConsumerWidget {
                     ],
                   ),
                 )
-              else
-                _CatalogPreviewCard(me: me, name: name, avatar: user?.avatar ?? ''),
+              else ...[
+                GestureDetector(
+                  onTap: () => context.push('/psy/cabinet'),
+                  child: _CatalogPreviewCard(
+                      me: me, name: name, avatar: user?.avatar ?? ''),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/psy/cabinet'),
+                    icon: const Icon(Icons.storefront_rounded, size: 18),
+                    label: const Text('Редактировать кабинет'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: t.blue,
+                      side: BorderSide(color: t.glassBorder),
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               Text('НАСТРОЙКИ',
                   style: TextStyle(
@@ -1555,7 +2245,9 @@ class PsyProfileScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.1)),
               const SizedBox(height: 10),
-              _row(t, Icons.edit_outlined, 'Редактировать профиль',
+              _row(t, Icons.storefront_rounded, 'Редактировать кабинет',
+                  () => context.push('/psy/cabinet')),
+              _row(t, Icons.edit_outlined, 'Личный профиль и аватар',
                   () => context.push('/profile/edit')),
               _row(
                 t,
