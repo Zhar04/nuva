@@ -14,6 +14,9 @@ nuva_app/android/local.properties
 *.jks
 *.keystore
 
+# Cloudflare Wrangler local cache
+nuva_app/server/.wrangler/
+
 # Native binaries / generated
 nuva_app/android/.gradle/
 nuva_app/android/.cxx/
