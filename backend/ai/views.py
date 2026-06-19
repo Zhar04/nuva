@@ -108,12 +108,16 @@ class MatchView(APIView):
     match score and human-readable reasons. Deterministic, no LLM."""
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "ai"
 
     def post(self, request):
         topics = request.data.get("topics") or []
         if not isinstance(topics, list):
             topics = [topics]
-        wanted = {str(t).strip().lower() for t in topics if str(t).strip()}
+        # Cap the number of topics so a caller can't send a huge list (each is
+        # lower-cased and intersected against every specialist's tags).
+        topics = topics[:20]
+        wanted = {str(t).strip().lower()[:60] for t in topics if str(t).strip()}
         language = (request.data.get("language") or "").strip().lower()
         try:
             limit = int(request.data.get("limit", 5))
@@ -170,6 +174,7 @@ class AskView(APIView):
     emergency resources; otherwise proxied to Claude (graceful fallback)."""
 
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = "ai"
 
     def post(self, request):
         message = (request.data.get("message") or "").strip()

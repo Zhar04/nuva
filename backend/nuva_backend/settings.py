@@ -169,6 +169,10 @@ REST_FRAMEWORK = {
         "anon": "60/min",
         "user": "240/min",
         "auth": "12/min",  # login / register
+        # AI endpoints bill the Anthropic account per call — keep this tight to
+        # bound denial-of-wallet even for an authenticated user. Override via env
+        # without a code change if real usage needs more headroom.
+        "ai": os.getenv("AI_THROTTLE_RATE", "15/min"),
     },
 }
 

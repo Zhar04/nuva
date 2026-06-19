@@ -9,6 +9,8 @@ the auth gate on both endpoints.
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.test import APIClient
 from rest_framework.test import APITestCase
 
@@ -103,3 +105,54 @@ class MatchViewTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn("results", res.data)
         self.assertIsInstance(res.data["results"], list)
+
+    def test_oversized_topics_list_is_capped(self):
+        """A huge topics list must not be processed wholesale (denial-of-wallet
+        / CPU): it's truncated to 20 and the request still succeeds."""
+        user = User.objects.create_user(email="big@nuva.kz", password="Test12345")
+        client = APIClient()
+        client.force_authenticate(user)
+        res = client.post(
+            "/api/v1/ai/match/",
+            {"topics": [f"тема{i}" for i in range(500)]},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("results", res.data)
+
+
+class ThrottleTests(APITestCase):
+    """The AI endpoints bill Anthropic per call, so they carry a dedicated,
+    tight scoped throttle to bound denial-of-wallet."""
+
+    def setUp(self):
+        cache.clear()  # throttle history lives in the cache
+        self.user = User.objects.create_user(
+            email="rate@nuva.kz", password="Test12345"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        # DRF binds the rate map to SimpleRateThrottle.THROTTLE_RATES at import,
+        # so override_settings doesn't reach it — mutate that map in place and
+        # restore the original 'ai' rate afterwards.
+        self._orig_ai = SimpleRateThrottle.THROTTLE_RATES.get("ai")
+        SimpleRateThrottle.THROTTLE_RATES["ai"] = "2/min"
+
+    def tearDown(self):
+        if self._orig_ai is None:
+            SimpleRateThrottle.THROTTLE_RATES.pop("ai", None)
+        else:
+            SimpleRateThrottle.THROTTLE_RATES["ai"] = self._orig_ai
+        cache.clear()
+
+    def test_ai_endpoint_throttles_after_scope_limit(self):
+        with mock.patch("ai.views._claude_chat", return_value="ok"):
+            codes = [
+                self.client.post(
+                    "/api/v1/ai/ask/", {"message": "hi"}, format="json"
+                ).status_code
+                for _ in range(3)
+            ]
+        # First two within the 2/min scope pass; the third is throttled.
+        self.assertEqual(codes[:2], [200, 200])
+        self.assertEqual(codes[2], 429)
