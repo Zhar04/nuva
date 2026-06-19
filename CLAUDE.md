@@ -70,6 +70,8 @@ is outdated.** The app now talks to the Django REST backend for real:
   production via `DATABASE_URL`**. In production that `DATABASE_URL` is **Railway
   Postgres** (Railway's managed Postgres, injected as a service variable). The
   local SQLite file is a throwaway dev DB — it is *not* the production data.
+  (You can also run a **local Postgres** for dev parity: `backend/setup_local_db.ps1`
+  provisions one — then set `DATABASE_URL` in a local `backend/.env`.)
 - **Supabase is legacy.** `lib/services/{backend,auth_service,db_service}.dart`,
   `nuva_app/supabase/schema.sql`, and the `SUPABASE_*` keys in `.env` are
   left over from an earlier Supabase-targeted design. The live app does **not**

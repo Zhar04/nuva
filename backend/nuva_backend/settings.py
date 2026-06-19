@@ -112,13 +112,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "nuva_backend.wsgi.application"
 
-# SQLite locally; Railway Postgres in prod (when DATABASE_URL is set).
+# Postgres when DATABASE_URL is a non-empty string (Railway in prod); SQLite otherwise.
+_db_url = os.getenv("DATABASE_URL", "").strip()
 DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    "default": dj_database_url.parse(_db_url, conn_max_age=600, conn_health_checks=True)
+    if _db_url
+    else {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
 AUTH_USER_MODEL = "accounts.User"
