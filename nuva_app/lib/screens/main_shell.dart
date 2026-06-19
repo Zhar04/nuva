@@ -3,7 +3,6 @@ import 'dart:ui' show ImageFilter, lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../l10n/strings.dart';
 import '../services/backend_auth.dart';
@@ -29,14 +28,11 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final s = S.of(ref);
 
-    // Auth gate: the main app requires a signed-in backend account.
-    // After logout (token cleared) this bounces the user back to /auth.
+    // Auth gating now lives in the centralized go_router redirect
+    // (lib/router/app_router.dart): unauthenticated users never reach the shell,
+    // and logout bounces back to /auth via the refreshListenable. We only read
+    // the user here to pick the seeker- vs psychologist-shaped tab set.
     final auth = ref.watch(backendAuthProvider);
-    if (!auth.restoring && !auth.isSignedIn) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/auth');
-      });
-    }
 
     // The app is a different product for psychologists — they don't search for
     // specialists, they run their cabinet (sessions, clients, profile).

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/backend_auth.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 import '../widgets/nuva_logo.dart';
@@ -34,7 +35,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _go() async {
+    // Let the brand animation play, then wait for session restore to settle so
+    // the centralized router redirect (app_router.dart) can route a signed-in
+    // or offline-guest user off /splash first. If it did, we're unmounted and
+    // bail; otherwise the user is genuinely unauthenticated and we pick the
+    // first-run intro vs the login screen.
     await Future.delayed(const Duration(milliseconds: 1700));
+    while (mounted && ref.read(backendAuthProvider).restoring) {
+      await Future.delayed(const Duration(milliseconds: 80));
+    }
     if (!mounted) return;
     final prefs = await SharedPreferences.getInstance();
     final onboarded = prefs.getBool('onboarded') ?? false;

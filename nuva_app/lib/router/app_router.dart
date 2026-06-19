@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/booking.dart';
+import '../models/user_profile.dart';
 import '../screens/auth_screen.dart';
 import '../screens/booking_screen.dart';
 import '../screens/chat_list_screen.dart';
@@ -25,10 +28,107 @@ import '../screens/role_select_screen.dart';
 import '../screens/specialists_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/video_call_screen.dart';
+import '../services/backend_auth.dart';
 
-Future<GoRouter> buildRouter() async {
+/// Routes a guest may reach without a signed-in account. Everything else
+/// (home, specialists, booking, payment, chats, journal, psy/*, …) is gated.
+/// Prefix-matched, so e.g. `/onboarding/user` and `/legal/privacy` are covered.
+const _publicPrefixes = <String>[
+  '/splash',
+  '/',
+  '/auth',
+  '/onboarding',
+  '/role',
+  '/legal',
+];
+
+/// Whether [location] is reachable without a signed-in account. Exposed for
+/// tests; the redirect uses it to decide who gets bounced to /auth.
+bool isPublicRoute(String location) {
+  // Strip query string before matching.
+  final path = location.split('?').first;
+  if (path == '/') return true;
+  for (final p in _publicPrefixes) {
+    if (p == '/') continue;
+    if (path == p || path.startsWith('$p/')) return true;
+  }
+  return false;
+}
+
+/// Bridges the Riverpod auth [StateNotifier] to a [Listenable] so go_router's
+/// (non-reactive) redirect re-runs on every login / logout / restore.
+class _AuthRefresh extends ChangeNotifier {
+  _AuthRefresh(ProviderContainer container) {
+    _sub = container.listen<AuthState>(
+      backendAuthProvider,
+      (_, __) => notifyListeners(),
+      fireImmediately: false,
+    );
+  }
+  late final ProviderSubscription<AuthState> _sub;
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+}
+
+Future<GoRouter> buildRouter(ProviderContainer container) async {
   return GoRouter(
     initialLocation: '/splash',
+    refreshListenable: _AuthRefresh(container),
+    redirect: (context, state) {
+      final auth = container.read(backendAuthProvider);
+      final location = state.matchedLocation;
+
+      // Still restoring a saved session → hold on /splash (no form flash).
+      if (auth.restoring) {
+        return location == '/splash' ? null : '/splash';
+      }
+
+      // Offline guest (saved token, backend unreachable): let them roam so the
+      // sample-catalog demo works. Only redirect away from /splash so the app
+      // doesn't get stuck on the loader once restore finished.
+      if (auth.offline && !auth.isSignedIn) {
+        return location == '/splash' ? '/home' : null;
+      }
+
+      final signedIn = auth.isSignedIn;
+      final public = isPublicRoute(location);
+
+      if (!signedIn) {
+        if (public) return null;
+        // Stash the intended route so we can return after sign-in.
+        return Uri(path: '/auth', queryParameters: {'next': location})
+            .toString();
+      }
+
+      // Signed in but sitting on /auth → into the app, honoring a stashed
+      // ?next= intended route. (The register flow navigates itself to
+      // /onboarding right after sign-up — see auth_screen._submit — and the
+      // /onboarding rule below leaves a not-yet-onboarded user there.)
+      if (location == '/auth') {
+        final next = state.uri.queryParameters['next'];
+        return (next != null && next.isNotEmpty && !isPublicRoute(next))
+            ? next
+            : '/home';
+      }
+      if (location == '/splash' || location == '/') {
+        return '/home';
+      }
+      // Spec: a signed-in user on /onboarding → /home — but ONLY once they've
+      // finished onboarding. The register flow (role → register → onboarding)
+      // signs the account in BEFORE onboarding runs (the avatar upload and the
+      // specialists/me PUT both need a JWT), so a mid-registration user
+      // (onboarded == false) must be allowed to complete it. A returning,
+      // already-onboarded user can't get stranded re-doing it.
+      if (location.startsWith('/onboarding')) {
+        final onboarded = container.read(userProfileProvider).onboarded;
+        if (onboarded) return '/home';
+      }
+      return null;
+    },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/', builder: (_, __) => const OnboardingScreen()),

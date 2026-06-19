@@ -38,7 +38,14 @@ class BackendUser {
 class AuthState {
   final BackendUser? user;
   final bool restoring;
-  const AuthState({this.user, this.restoring = false});
+
+  /// True when a saved session token exists but the backend was unreachable
+  /// at restore time, so we couldn't confirm the user. We keep the token and
+  /// let the app run as a guest (sample catalogs) instead of forcing /auth —
+  /// this is what keeps the offline demo alive.
+  final bool offline;
+
+  const AuthState({this.user, this.restoring = false, this.offline = false});
   bool get isSignedIn => user != null;
 }
 
@@ -63,18 +70,38 @@ class BackendAuth extends StateNotifier<AuthState> {
     _refresh = prefs.getString(_kRefresh);
     if (_access != null) {
       if (await _loadMe()) return;
-      if (await _tryRefresh() && await _loadMe()) return;
-      await _clear();
+      // /auth/me failed. If it was the backend rejecting us (401 etc.), the
+      // token is stale — try a refresh, then give up to a clean logout. If it
+      // was a network failure, _backendReachable is false: keep the saved
+      // token and run as an offline guest so the sample-catalog demo lives on.
+      if (_backendReachable) {
+        if (await _tryRefresh() && await _loadMe()) return;
+        await _clear();
+        state = const AuthState();
+      } else {
+        // Token preserved (not cleared) so a later online launch can confirm it.
+        state = const AuthState(offline: true);
+      }
+      return;
     }
     state = const AuthState();
   }
 
+  /// Tracks whether the last auth call actually reached the backend (vs a
+  /// transport failure). Drives the offline-guest path in [_restore].
+  bool _backendReachable = true;
+
   Future<bool> _loadMe() async {
     try {
       final me = await _api.get('auth/me', token: _access);
+      _backendReachable = true;
       state = AuthState(user: BackendUser.fromJson(me));
       return true;
+    } on ApiException {
+      _backendReachable = true; // backend answered, just not 2xx
+      return false;
     } catch (_) {
+      _backendReachable = false; // network/transport failure
       return false;
     }
   }
@@ -85,8 +112,13 @@ class BackendAuth extends StateNotifier<AuthState> {
       final r = await _api.post('auth/refresh', {'refresh': _refresh});
       _access = r['access'] as String;
       await _persist();
+      _backendReachable = true;
       return true;
+    } on ApiException {
+      _backendReachable = true;
+      return false;
     } catch (_) {
+      _backendReachable = false;
       return false;
     }
   }

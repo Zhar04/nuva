@@ -35,8 +35,15 @@ Future<void> main() async {
     } catch (e, s) {
       await Observability.report(e, s);
     }
-    final router = await buildRouter();
-    runApp(ProviderScope(child: NuvaApp(router: router)));
+    // One shared container so the router's redirect/refreshListenable read the
+    // same auth state the widget tree does (the router is built before the
+    // ProviderScope, so it can't use a WidgetRef).
+    final container = ProviderContainer();
+    final router = await buildRouter(container);
+    runApp(UncontrolledProviderScope(
+      container: container,
+      child: NuvaApp(router: router),
+    ));
   });
 }
 

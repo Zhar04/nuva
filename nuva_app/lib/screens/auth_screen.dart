@@ -26,7 +26,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _name = TextEditingController();
   late bool _register = widget.initialRegister;
   bool _busy = false;
-  bool _navigating = false; // suppress the auto-redirect during a submit
 
   @override
   void dispose() {
@@ -52,7 +51,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _snack('Введите email и пароль', error: true);
       return;
     }
-    _navigating = true;
     setState(() => _busy = true);
     final auth = ref.read(backendAuthProvider.notifier);
     // Role was chosen on /role before landing here; register with it so the
@@ -74,13 +72,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       } else {
         await auth.login(email: email, password: password);
         _snack('С возвращением!');
-        if (mounted) context.go('/home');
+        // Routing is handled by the centralized go_router redirect (it reacts
+        // to the auth state change and honors any ?next= intended route).
       }
     } on ApiException catch (e) {
-      _navigating = false;
       _snack(e.message, error: true);
     } catch (_) {
-      _navigating = false;
       _snack('Нет связи с сервером. Бэкенд запущен?', error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -97,13 +94,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       return const Scaffold(
           body: Center(child: CircularProgressIndicator()));
     }
-    // Returning user who arrived already signed in → straight to the app.
-    // Suppressed during a submit so register can route to onboarding (/role).
-    if (authState.isSignedIn && !_navigating) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/home');
-      });
-    }
+    // A signed-in user arriving on /auth is sent into the app by the centralized
+    // go_router redirect; no manual navigation needed here.
 
     InputDecoration deco(String hint, IconData icon) => InputDecoration(
           hintText: hint,
