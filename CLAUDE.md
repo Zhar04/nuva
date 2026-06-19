@@ -15,73 +15,57 @@ Three parts live in this repo:
 
 | Part | Path | What it is |
 |---|---|---|
-| **Flutter app** (the product) | `nuva_app/` | The actual web/mobile app, Dart/Flutter. Deployed as a PWA. **Most frontend work happens here.** |
-| **Django backend** (the API) | `backend/` | Django + DRF + SimpleJWT REST API. Deployed on Railway. **All real data + auth live here.** |
-| **Design showcase** (artifact) | repo root `*.jsx`, `Nuva.html`, `nuva-dashboard.html` | Browser-only React/Babel design gallery + a standalone business dashboard. Opened directly in a browser (React/Babel via CDN). Not built, not shipped. |
+| **Flutter app** (the product) | `nuva_app/` | The web/mobile app, Dart/Flutter. Shipped as a PWA on GitHub Pages. **Most frontend work happens here.** |
+| **Django backend** (the API) | `backend/` | Django + DRF + SimpleJWT REST API. Runs on Railway. **All real data + auth live here.** |
+| **Design showcase** (artifact) | repo root `*.jsx`, `Nuva.html`, `nuva-dashboard.html` | Browser-only React/Babel design gallery. Opened directly in a browser. Not built, not shipped. |
 
 `Nuvastrategy.pdf` is a business/strategy document, not code.
 
 > Unless a task is explicitly about the design showcase, "the app" means `nuva_app/`
 > and "the backend" means `backend/`.
 
-## ⚠️ This is a LIVE, backend-connected app (not the old mock-first prototype)
+## The system is cloud-hosted — work against the deployed services
 
-Earlier docs called this a "mock-first prototype wired to in-memory mocks." **That
-is outdated.** The app now talks to the Django REST backend for real:
+There is no local server or local database to stand up. The app and the backend
+both run in the cloud, and the frontend always talks to the **deployed** backend:
 
-- **Auth is real:** email/password JWT (`lib/services/backend_auth.dart` +
-  `auth_screen.dart`). `MainShell` has an auth gate — logout bounces to `/auth`.
-  Flow: register → role select → onboarding → home; login → home.
-- **Data is real, with mock fallback:** specialists, bookings, chat, community,
-  mood journal all come from the backend via `lib/services/data.dart` providers
-  (`apiClientProvider`). When the backend is unreachable they **degrade to the
-  bundled mock catalogs** (`specialistCatalog`, `mockChats`) — keep that fallback
-  intact so the app never hard-crashes offline.
-- **Booking lifecycle is real:** бронь → запрос → подтверждение → оплата. A client
-  books a *request* (free intro session or paid package); the psychologist
-  accepts/declines; paid sessions then go through payment. The card acquirer is
-  still mocked, but the booking rows + state transitions are real backend calls.
-- **Video call:** opens a Jitsi room **in a new tab** (`video_call_screen.dart`).
-  Public Jitsi instances (`meet.ffmuc.net`) now block iframe embedding, so we no
-  longer embed — see `docs/VIDEO_CALL.md`.
-- **AI intake/matching:** served by the backend `ai` app (`/api/v1/ai/match`,
-  `/api/v1/ai/ask`).
+- **Backend → Railway:** <https://nuva-production.up.railway.app>
+- **Frontend → GitHub Pages:** <https://zhar04.github.io/nuva/>
+- **Database → Railway Postgres** (managed by Railway; see below)
+- **Admin (Django):** `https://nuva-production.up.railway.app/admin/`
 
-## Production deployment (this is deployed and live)
+A fresh `git clone` runs against these immediately — you only need `nuva_app/.env`
+(config that points the app at the Railway backend, see *Configuration*).
 
-- **Backend → Railway:** <https://nuva-production.up.railway.app>. Auto-deploys on
-  push to `main`. `backend/railway.json` `startCommand` runs
-  `migrate → ensure_admin → collectstatic → gunicorn` (so a healthy `/healthz`
-  after a deploy means the migration applied). Django admin at `/admin/`.
-- **Frontend → GitHub Pages:** <https://zhar04.github.io/nuva/>, served from the
-  **`gh-pages`** branch, base href `/nuva/`. The app's `API_BASE_URL` points at the
-  Railway backend, so **both the GitHub Pages build and any local `:8090` build hit
-  Railway/Postgres**, not a local server.
-- **To deploy the frontend:** `flutter build web --release --base-href /nuva/`
-  (build with the **PowerShell tool, not Git-Bash** — MSYS mangles `/nuva/` into a
-  Windows path and the base href silently falls back to `/`), then push `build/web`
-  to `gh-pages` (e.g. via `git worktree add <dir> gh-pages` → replace contents →
-  `touch .nojekyll` → commit → push). GitHub Pages doesn't serve dotfiles.
+## How it's deployed (and how to ship changes)
 
-## Database — Postgres on Railway (NOT Supabase)
+- **Backend:** Railway **auto-deploys on every push to `main`**. `backend/railway.json`
+  `startCommand` runs `migrate → ensure_admin → collectstatic → gunicorn`, so
+  pushing a model/migration change applies it to Railway Postgres automatically.
+  A healthy `/healthz` after a deploy means the migration applied (migrate runs
+  before gunicorn). **So: backend changes go live by committing + pushing `main`.**
+- **Frontend:** built and served from the **`gh-pages`** branch, base href `/nuva/`.
+  To ship a frontend change:
+  1. `flutter build web --release --base-href /nuva/`
+     — build with the **PowerShell tool, not Git-Bash**: MSYS rewrites `/nuva/`
+       into a Windows path and the base href silently falls back to `/`.
+  2. Push `build/web` to `gh-pages` (e.g. `git worktree add <dir> gh-pages` →
+     replace contents → `touch .nojekyll` → commit → push). GitHub Pages doesn't
+     serve dotfiles, and the app's `API_BASE_URL` already points at Railway, so the
+     deployed PWA talks to the deployed backend.
 
-- The backend uses `dj-database-url` (`backend/nuva_backend/settings.py`):
-  **SQLite locally** (`backend/db.sqlite3`, gitignored) and **Postgres in
-  production via `DATABASE_URL`**. In production that `DATABASE_URL` is **Railway
-  Postgres** (Railway's managed Postgres, injected as a service variable). The
-  local SQLite file is a throwaway dev DB — it is *not* the production data.
-  (You can also run a **local Postgres** for dev parity: `backend/setup_local_db.ps1`
-  provisions one — then set `DATABASE_URL` in a local `backend/.env`.)
-- **Supabase is legacy.** `lib/services/{backend,auth_service,db_service}.dart`,
-  `nuva_app/supabase/schema.sql`, and the `SUPABASE_*` keys in `.env` are
-  left over from an earlier Supabase-targeted design. The live app does **not**
-  use Supabase as its database or auth — that all moved to the Django backend. The
-  Supabase anon key in `.env` is vestigial (don't treat Supabase as the source of
-  truth).
-- **Production secrets live in Railway → service → Variables** (`DATABASE_URL`,
-  `SECRET_KEY`, `CORS_ALLOWED_ORIGINS`, etc.), **not** in any committed or local
-  file. There is no `backend/.env` on disk by default — local dev just falls back
-  to SQLite + insecure defaults. See `docs/DEPLOY_RAILWAY.md`.
+## Database — Railway Postgres
+
+- The production database is **Postgres on Railway**, reached through `DATABASE_URL`
+  (a Railway service variable). It is the single source of truth — there is no
+  separate data store, and the app never depends on any local data.
+- The backend reads `DATABASE_URL` via `dj-database-url`
+  (`backend/nuva_backend/settings.py`).
+- **All backend secrets live in Railway → service → Variables** (`DATABASE_URL`,
+  `SECRET_KEY`, `CORS_ALLOWED_ORIGINS`, `ANTHROPIC_API_KEY`, …) — never in the repo.
+  See `docs/DEPLOY_RAILWAY.md` for the full list.
+- Inspect/edit data via the Django admin (URL above) or any Postgres client pointed
+  at the Railway `DATABASE_URL`.
 
 ## Backend architecture (`backend/`)
 
@@ -89,91 +73,86 @@ Django 5 + DRF + SimpleJWT. Apps:
 
 - `accounts` — custom email `User` (roles: seeker / psychologist / admin), JWT
   auth (`/api/v1/auth/{register,login,refresh,me}`), pro-document uploads,
-  `ensure_admin` management command (bootstraps the admin from env on deploy).
+  `ensure_admin` command (bootstraps the admin from env on deploy).
 - `catalog` — `Specialist` / `Education` / `Review`; public list + detail; a
   psychologist edits their own listing via `PUT /api/v1/specialists/me`
   (writable nested education). Only `is_verified` specialists show in the catalog.
-- `booking` — `Booking` (statuses: requested → scheduled/pending_payment → paid →
-  completed, plus declined/cancelled/refunded) + `ClientNote`. Endpoints:
+- `booking` — `Booking` (statuses: requested → scheduled / pending_payment → paid →
+  completed, plus declined / cancelled / refunded) + `ClientNote`. Endpoints:
   `bookings/`, `bookings/incoming`, `bookings/{id}/{accept,decline,pay}`,
   `bookings/clients/{id}` (the psychologist's private client card: concern, mood
   trend, notes, session history).
-- `chat` — 1:1 `Conversation` + `Message`, with a video-call request/accept
-  handshake.
+- `chat` — 1:1 `Conversation` + `Message`, with a video-call request/accept handshake.
 - `community` — anonymous posts + replies + likes.
 - `journal` — daily `MoodEntry` (1 per day) + gamification stats.
 - `ai` — Claude proxy (`/api/v1/ai/{match,ask}`) for intake/matching.
 
-Local run: `cd backend && .venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000`.
-⚠️ Django's autoreloader does **not** always pick up serializer/model edits —
-restart `runserver` after backend `.py` changes (kill the PID on :8000, re-run).
-`dev` seeder: `backend/seed_demo.py` fills the *local* SQLite with a demo
-psychologist + clients/requests (useless against Railway — seed Railway via the
-public API instead).
+Check object-level ownership on every endpoint (e.g. a psychologist only sees their
+own incoming bookings / client cards).
 
 ## Flutter app architecture (`nuva_app/`)
 
 - **State:** `flutter_riverpod`. **Routing:** `go_router` (`lib/router/app_router.dart`).
-- **API layer:** `lib/services/api_client.dart` (thin HTTP over `/api/v1/...`,
-  base from `API_BASE_URL`), `backend_auth.dart` (JWT session), `data.dart` (all
-  the Riverpod providers + `PsyActions` for psychologist write actions).
+- **API layer:** `lib/services/api_client.dart` (thin HTTP over `/api/v1/...`, base
+  from `API_BASE_URL`), `backend_auth.dart` (JWT session — register / login /
+  refresh; `MainShell` has an auth gate, logout bounces to `/auth`), `data.dart`
+  (all the Riverpod providers + `PsyActions` for psychologist write actions).
+- **Real flows (all backed by the Railway API):** auth, specialists, the booking
+  lifecycle (бронь → запрос → подтверждение → оплата; free intro vs paid package —
+  the card acquirer is still mocked but bookings + state transitions are real),
+  chat, community, mood journal, AI intake. Providers fall back to bundled sample
+  catalogs **only** when the backend is unreachable (offline resilience) — keep
+  that fallback intact so the app never hard-crashes.
 - **Design system:** `lib/theme/` (`tokens.dart`, `theme.dart`) + `lib/widgets/`
-  (`glass.dart` = GlassCard/GlassBackdrop, `avatar.dart` = GradientAvatar / Tag /
+  (`glass.dart` = GlassCard / GlassBackdrop, `avatar.dart` = GradientAvatar / Tag /
   SectionLabel). Reach theme via the `context.nuva` extension.
 - **Localization:** all strings in `lib/l10n/strings.dart` (`S.of(ref)`), language
-  in the Riverpod `langProvider` (RU/KK/EN). No `.arb` files. Theme mode in
-  `themeModeProvider`. (The psychologist cabinet screens are RU-only by design.)
+  in `langProvider` (RU/KK/EN); theme mode in `themeModeProvider`. No `.arb` files.
+  (The psychologist cabinet screens are RU-only by design.)
 - **Screens:** `lib/screens/` (one file each). `main_shell.dart` is the bottom-nav
-  `IndexedStack` — it shows a **different 5-tab product for psychologists**
-  (`psy_screens.dart`: Сегодня / Расписание / Запросы / Доходы / Профиль, plus
-  `psy_client_screen.dart` and `psy_cabinet_edit_screen.dart`) vs seekers
-  (home / specialists / community / calm / profile).
-- **Models:** `lib/models/` (`specialist.dart`, `booking.dart`, `chat.dart`,
-  `community.dart`) — also hold the in-memory **mock catalogs** used as the
-  offline fallback.
+  `IndexedStack` — a **different 5-tab product for psychologists** (`psy_screens.dart`:
+  Сегодня / Расписание / Запросы / Доходы / Профиль, plus `psy_client_screen.dart`
+  and `psy_cabinet_edit_screen.dart`) vs seekers (home / specialists / community /
+  calm / profile).
+- **Video call:** `video_call_screen.dart` opens a Jitsi room **in a new tab**
+  (public instances block iframe embedding) — see `docs/VIDEO_CALL.md`.
 
-## Configuration & secrets
+## Configuration
 
-- Frontend config is `nuva_app/.env` (via `flutter_dotenv`; template `.env.example`).
-  Keys that matter: **`API_BASE_URL`** (→ the Railway backend), `JITSI_DOMAIN`
-  (video instance), and the legacy `SUPABASE_URL` / `SUPABASE_ANON_KEY`,
-  `CLAUDE_PROXY_URL`, `SENTRY_DSN`.
-- `.env` is **gitignored** and **does not exist on a fresh clone** — `cp .env.example .env`
-  (or copy the real one) before building. It is declared as a Flutter **asset**, so
-  the build fails without it, and **anything in it ships inside the web/APK build
-  and is extractable** — only client-safe values (the Supabase *anon* key is fine;
-  a raw `ANTHROPIC_API_KEY` is not — use the backend/proxy).
-- **Backend prod secrets are in Railway Variables**, never in the repo.
-- Android release signing would read `android/key.properties` (gitignored, absent) —
-  Android signing is not set up; **web (GitHub Pages PWA) is the shipped target.**
+- The only config the frontend needs is **`nuva_app/.env`** (via `flutter_dotenv`;
+  template `.env.example`). The key that matters is **`API_BASE_URL`** → the Railway
+  backend; also `JITSI_DOMAIN` (video instance). `.env` is gitignored and isn't on a
+  fresh clone — `cp .env.example .env` and set `API_BASE_URL` before building.
+- `.env` is declared as a Flutter **asset**, so it ships inside the web build and is
+  extractable — only put client-safe values in it (never a raw `ANTHROPIC_API_KEY`;
+  AI calls go through the backend `ai` app).
+- Backend secrets are configured in **Railway Variables**, not in the repo.
+- The shipped target is **web (GitHub Pages PWA)**; Android signing is not set up.
 
 ## Common commands
 
 ```bash
-# Frontend
 cd nuva_app
 flutter pub get
-flutter run -d chrome                       # local dev (talks to Railway via .env)
-flutter analyze                             # static analysis
-flutter build web --release --base-href /nuva/   # build for GitHub Pages (use PowerShell, not Git-Bash)
-
-# Backend (local)
-cd backend
-.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
-.venv\Scripts\python.exe manage.py migrate
+flutter run -d chrome                              # dev run (talks to the Railway backend)
+flutter analyze                                    # static analysis
+flutter build web --release --base-href /nuva/     # build for GitHub Pages (use PowerShell, not Git-Bash)
 ```
+
+Test logins on the live backend: psychologist `demo.psy@nuva.kz` / `Demo12345`,
+client `demo.client1@nuva.kz` / `Demo12345`.
 
 ## Conventions
 
-- Private widgets are file-local `_PascalCase` classes — keep that pattern; don't export.
-- Reach theme tokens through `context.nuva`; reach shared strings through `S.of(ref)`.
-  Psychologist-cabinet copy is hardcoded Russian (by design) — match the surrounding file.
+- Private widgets are file-local `_PascalCase` classes — keep that; don't export.
+- Reach theme tokens through `context.nuva`; shared strings through `S.of(ref)`.
+  Psychologist-cabinet copy is hardcoded Russian (by design) — match the file.
 - New routes go in `app_router.dart`. Detail screens are `push`ed; tabs live in `MainShell`.
-- **Keep the backend-vs-mock fallback intact:** providers must degrade to the mock
-  catalogs / empty results when the backend is unreachable, so the app keeps running.
-- The user prefers commit + push each working increment with savepoint tags
-  (`git tag savepoint/...`). Pushing `main` redeploys Railway; deploying the
-  frontend means rebuilding + pushing `gh-pages` (see above).
+- Keep the offline fallback intact: providers degrade to sample catalogs / empty
+  results when the backend is unreachable.
+- Workflow: commit + push each working increment with savepoint tags
+  (`git tag savepoint/...`). Pushing `main` redeploys Railway; shipping the frontend
+  means rebuilding + pushing `gh-pages` (see *How it's deployed*).
 
 ## Security-sensitive areas (be careful here)
 
@@ -181,23 +160,18 @@ This app handles **special-category personal data** (mental-health) plus payment
 under Kazakhstan's Закон «О персональных данных» №94-V. Before touching these, read
 `TECHNICAL_LETTER.md`:
 
-- `backend/` — RLS is no longer the model; the Django ORM + DRF permissions are.
-  Check object-level ownership on every endpoint (e.g. a psychologist can only see
-  their own incoming bookings / client cards).
-- `payment_screen.dart` — still renders a raw PAN/CVV card form (PCI scope); the
-  live flow uses a mock acquirer. Must move to a real acquirer SDK before launch.
+- **Backend permissions** — enforce object-level ownership on every endpoint; users
+  must never read another user's bookings, messages, or client notes.
+- `payment_screen.dart` — still renders a raw PAN/CVV card form (PCI scope); the live
+  flow uses a mock acquirer. Must move to a real acquirer SDK before launch.
 - `video_call_screen.dart` — public Jitsi instances aren't private enough for
   mental-health calls; self-host or JaaS for production (`docs/VIDEO_CALL.md`).
 - `legal_screens.dart` — privacy-policy claims (encryption/TLS) the code doesn't
   fully meet yet.
-- Legacy (Supabase/Cloudflare era, mostly dormant but still in-repo):
-  `server/cloudflare-worker.js` (open CORS), `supabase/schema.sql`,
-  `auth_service.dart` (mock OTP returns `true`).
 
 ## Related docs
 
-- `docs/PROGRESS.md` — resume notes + local restart-after-reboot steps.
-- `docs/BACKEND_ARCHITECTURE.md` — backend spec + sprint roadmap.
+- `docs/BACKEND_ARCHITECTURE.md` — backend spec + roadmap.
 - `docs/DEPLOY_RAILWAY.md` — Railway setup + the env vars to set.
 - `docs/VIDEO_CALL.md` — Jitsi customization / self-host / JaaS options.
 - `TECHNICAL_LETTER.md` — security & code-review findings (read before launch work).
