@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -30,21 +29,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   PayMethod _method = PayMethod.kaspi;
   bool _processing = false;
   bool _done = false;
-
-  // Card form
-  final _card = TextEditingController();
-  final _exp = TextEditingController();
-  final _cvv = TextEditingController();
-  final _name = TextEditingController();
-
-  @override
-  void dispose() {
-    _card.dispose();
-    _exp.dispose();
-    _cvv.dispose();
-    _name.dispose();
-    super.dispose();
-  }
 
   Future<void> _pay() async {
     setState(() => _processing = true);
@@ -118,8 +102,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                         selected: _method == PayMethod.card,
                         onTap: () => setState(() => _method = PayMethod.card),
                       ),
-                      if (_method == PayMethod.card)
-                        _CardForm(card: _card, exp: _exp, cvv: _cvv, name: _name),
+                      if (_method == PayMethod.card) const _CardRedirectNote(),
                       const SizedBox(height: 10),
                       _MethodTile(
                         title: s.payWithApple,
@@ -149,7 +132,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         ),
       ),
       bottomSheet: _PayBar(
-        label: '${s.pay} · $priceLabel',
+        // For card, the action is a redirect to the acquirer's hosted page, so
+        // the label reflects that rather than "pay" inside the app.
+        label: _method == PayMethod.card
+            ? '${s.continueToPayment} · $priceLabel'
+            : '${s.pay} · $priceLabel',
         processing: _processing,
         onTap: _pay,
       ),
@@ -470,134 +457,65 @@ class _MethodTile extends StatelessWidget {
   }
 }
 
-class _CardForm extends ConsumerWidget {
-  final TextEditingController card;
-  final TextEditingController exp;
-  final TextEditingController cvv;
-  final TextEditingController name;
-  const _CardForm({
-    required this.card,
-    required this.exp,
-    required this.cvv,
-    required this.name,
-  });
+/// Replaces the old in-app PAN/CVV form. Card entry is delegated to the
+/// acquirer's hosted page (CloudPayments / ePay widget or an Apple/Google Pay
+/// token), so the card number and CVV never touch the app — that keeps Nuva out
+/// of PCI-DSS scope. The actual redirect is wired when the acquirer is
+/// integrated; today the "Оплатить" bar still drives the real
+/// `bookings/{id}/pay` transition (mock acquirer).
+class _CardRedirectNote extends ConsumerWidget {
+  const _CardRedirectNote();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(ref);
     final t = context.nuva;
-    InputDecoration deco(String h) => InputDecoration(
-          hintText: h,
-          hintStyle: TextStyle(color: t.textTer, fontSize: 13.5),
-          isDense: true,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: t.glassBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: t.blue, width: 1.4),
-          ),
-        );
-
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: GlassCard(
         radius: 18,
-        padding: const EdgeInsets.all(14),
-        child: Column(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: card,
-              decoration: deco(s.cardNumber),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(19),
-                _CardNumberFormatter(),
-              ],
-              style: TextStyle(color: t.text, fontSize: 14),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: t.teal.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.shield_outlined, color: t.teal, size: 22),
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: exp,
-                    decoration: deco('${s.expiry} · MM/YY'),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(4),
-                      _ExpiryFormatter(),
-                    ],
-                    style: TextStyle(color: t.text, fontSize: 14),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.cardRedirectTitle,
+                    style: TextStyle(
+                      color: t.text,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: cvv,
-                    decoration: deco(s.cvv),
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(3),
-                    ],
-                    style: TextStyle(color: t.text, fontSize: 14),
+                  const SizedBox(height: 4),
+                  Text(
+                    s.cardRedirectBody,
+                    style: TextStyle(
+                      color: t.textSec,
+                      fontSize: 12.5,
+                      height: 1.45,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: name,
-              decoration: deco(s.holderName),
-              style: TextStyle(color: t.text, fontSize: 14),
-              textCapitalization: TextCapitalization.characters,
+                ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CardNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(' ', '');
-    final buf = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && i % 4 == 0) buf.write(' ');
-      buf.write(digits[i]);
-    }
-    final out = buf.toString();
-    return TextEditingValue(
-      text: out,
-      selection: TextSelection.collapsed(offset: out.length),
-    );
-  }
-}
-
-class _ExpiryFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final d = newValue.text.replaceAll('/', '');
-    final buf = StringBuffer();
-    for (var i = 0; i < d.length; i++) {
-      if (i == 2) buf.write('/');
-      buf.write(d[i]);
-    }
-    final out = buf.toString();
-    return TextEditingValue(
-      text: out,
-      selection: TextSelection.collapsed(offset: out.length),
     );
   }
 }

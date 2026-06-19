@@ -85,7 +85,11 @@ Django 5 + DRF + SimpleJWT. Apps:
 - `chat` — 1:1 `Conversation` + `Message`, with a video-call request/accept handshake.
 - `community` — anonymous posts + replies + likes.
 - `journal` — daily `MoodEntry` (1 per day) + gamification stats.
-- `ai` — Claude proxy (`/api/v1/ai/{match,ask}`) for intake/matching.
+- `ai` — Claude proxy (`/api/v1/ai/{match,ask}`) for intake/matching. Both views
+  carry a dedicated scoped throttle (`ai` scope, default `15/min`, override via
+  the `AI_THROTTLE_RATE` Railway var) on top of the global per-user rate — these
+  calls bill Anthropic, so the tight cap bounds denial-of-wallet. `ask` caps the
+  message length; `match` caps the topics list.
 
 Check object-level ownership on every endpoint (e.g. a psychologist only sees their
 own incoming bookings / client cards).
@@ -186,8 +190,12 @@ under Kazakhstan's Закон «О персональных данных» №94
 
 - **Backend permissions** — enforce object-level ownership on every endpoint; users
   must never read another user's bookings, messages, or client notes.
-- `payment_screen.dart` — still renders a raw PAN/CVV card form (PCI scope); the live
-  flow uses a mock acquirer. Must move to a real acquirer SDK before launch.
+- `payment_screen.dart` — no longer collects raw PAN/CVV in-app (the old
+  `_CardForm` was removed to stay out of PCI scope). The card method now shows a
+  `_CardRedirectNote` placeholder explaining that card entry happens on the
+  acquirer's hosted page; the actual redirect/SDK is still to be wired, and the
+  live flow uses a mock acquirer (the real action is the `bookings/{id}/pay`
+  transition). Must integrate a real acquirer SDK/hosted page before launch.
 - `video_call_screen.dart` — public Jitsi instances aren't private enough for
   mental-health calls; self-host or JaaS for production (`docs/VIDEO_CALL.md`).
 - `legal_screens.dart` — privacy-policy claims (encryption/TLS) the code doesn't

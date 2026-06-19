@@ -333,30 +333,30 @@ class S {
         AppLang.kk: 'Барлығы',
         AppLang.en: 'Total',
       });
-  String get cardNumber => _pick({
-        AppLang.ru: 'Номер карты',
-        AppLang.kk: 'Карта нөмірі',
-        AppLang.en: 'Card number',
-      });
-  String get expiry => _pick({
-        AppLang.ru: 'Срок',
-        AppLang.kk: 'Мерзімі',
-        AppLang.en: 'Expiry',
-      });
-  String get cvv => _pick({
-        AppLang.ru: 'CVV',
-        AppLang.kk: 'CVV',
-        AppLang.en: 'CVV',
-      });
-  String get holderName => _pick({
-        AppLang.ru: 'Имя на карте',
-        AppLang.kk: 'Картадағы аты',
-        AppLang.en: 'Name on card',
-      });
   String get securedBy => _pick({
         AppLang.ru: 'Платежи защищены 3-D Secure. Деньги удерживаются на счёте Nuva до сессии.',
         AppLang.kk: 'Төлемдер 3-D Secure арқылы қорғалған.',
         AppLang.en: 'Payments secured with 3-D Secure. Funds held by Nuva until session.',
+      });
+  // Card payments are delegated to the acquirer's secure page — the app never
+  // collects the card number / CVV (keeps it out of PCI scope).
+  String get cardRedirectTitle => _pick({
+        AppLang.ru: 'Защищённая страница оплаты',
+        AppLang.kk: 'Қорғалған төлем беті',
+        AppLang.en: 'Secure payment page',
+      });
+  String get cardRedirectBody => _pick({
+        AppLang.ru: 'Данные карты вводятся на защищённой странице банка-эквайера, '
+            'а не в приложении. Nuva не видит и не хранит номер карты и CVV.',
+        AppLang.kk: 'Карта деректері қосымшада емес, эквайер-банктің қорғалған '
+            'бетінде енгізіледі. Nuva карта нөмірі мен CVV-ді көрмейді.',
+        AppLang.en: 'Card details are entered on the acquirer bank’s secure '
+            'page, not in the app. Nuva never sees or stores your card number or CVV.',
+      });
+  String get continueToPayment => _pick({
+        AppLang.ru: 'Перейти к оплате',
+        AppLang.kk: 'Төлемге өту',
+        AppLang.en: 'Continue to payment',
       });
 
   // Success
