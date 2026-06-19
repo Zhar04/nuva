@@ -1,7 +1,8 @@
 """Django settings for the Nuva backend.
 
 12-factor config via environment (.env locally, Railway vars in prod).
-Local dev uses SQLite automatically; set DATABASE_URL to use Supabase Postgres.
+Local dev uses SQLite automatically; in production DATABASE_URL points at
+Railway Postgres.
 """
 
 from datetime import timedelta
@@ -111,7 +112,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "nuva_backend.wsgi.application"
 
-# SQLite locally; Supabase Postgres when DATABASE_URL is set.
+# SQLite locally; Railway Postgres in prod (when DATABASE_URL is set).
 DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
