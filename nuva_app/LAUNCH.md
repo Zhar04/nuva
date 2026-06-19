@@ -13,7 +13,7 @@
 - ✅ ProGuard + shrinking — APK уменьшается с 22 MB до ~9–12 MB на устройстве
 - ✅ Бэкенд-обвязка (Supabase) — работает в моках пока ключи не подставлены
 - ✅ SQL-схема готова: [`supabase/schema.sql`](supabase/schema.sql)
-- ✅ Cloudflare Worker для Claude-прокси: [`server/cloudflare-worker.js`](server/cloudflare-worker.js)
+- ✅ Claude AI — проксируется через Django backend (`/api/v1/ai/{ask,match}`); ключ живёт только в Railway Variables
 - ✅ Sentry-обвязка — включается при наличии DSN
 - ✅ Юр-страницы (Конфиденциальность / Соглашение / О приложении) — текст-черновик внутри приложения
 - ✅ Anti-disintermediation в чате (детектор контактов)
@@ -59,14 +59,15 @@
   ```
   Пример Edge Function для отправки — есть в Supabase docs.
 
-### Шаг 4 — Claude AI прокси через Cloudflare (~15 минут)
+### Шаг 4 — Claude AI через Django backend (~5 минут)
 
-- [ ] Зарегаться на https://dash.cloudflare.com (бесплатно).
-- [ ] **Workers & Pages** → Create Worker → "Hello World" template.
-- [ ] Заменить код на содержимое [`server/cloudflare-worker.js`](server/cloudflare-worker.js).
-- [ ] **Settings → Variables** → добавить `ANTHROPIC_API_KEY` (выбрать "Encrypt"). Ключ получить здесь: https://console.anthropic.com → пополнить баланс на $5–10 для старта.
-- [ ] Deploy. Скопировать URL вида `https://nuva-claude.<your-sub>.workers.dev`.
-- [ ] В `.env` положить `CLAUDE_PROXY_URL=<этот URL>`.
+AI-интейк/подбор уже идёт через бэкенд (`/api/v1/ai/{ask,match}`) — отдельный
+прокси не нужен. Нужно только дать бэкенду ключ:
+
+- [ ] Получить ключ на https://console.anthropic.com (пополнить баланс на $5–10 для старта).
+- [ ] Railway → сервис бэкенда → **Variables** → добавить `ANTHROPIC_API_KEY`
+      (опц. `ANTHROPIC_MODEL`, по умолчанию `claude-opus-4-8`). Пуш в `main` авто-деплоит.
+- [ ] В приложении (`.env`) для AI ничего настраивать не нужно.
 
 ### Шаг 5 — Платёжный провайдер (~1–2 недели)
 

@@ -42,6 +42,8 @@ Service → **Variables** → add:
 | `CORS_ALLOWED_ORIGINS` | `https://zhar04.github.io` (the PWA origin; add others comma-separated) |
 | `CSRF_TRUSTED_ORIGINS` | `https://zhar04.github.io` |
 | `DATABASE_URL` | only if you chose Supabase in step 2 |
+| `ANTHROPIC_API_KEY` | optional — enables real AI Q&A (`/api/v1/ai/ask/`); without it the endpoint returns a safe canned reply |
+| `ANTHROPIC_MODEL` | optional — Claude model id (default `claude-opus-4-8`) |
 
 > Railway sets `RAILWAY_PUBLIC_DOMAIN` itself — the settings already append it to
 > `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`, so you don't list the railway.app
@@ -103,9 +105,10 @@ Or use Railway's web shell on the service. Then log in at
   Postgres `DATABASE_URL` in Railway.
 - **Free tier:** Railway's trial/credits cover a small service + Postgres. If the
   service sleeps, the first request after idle is slow — that's expected.
-- **AI navigator (Groq):** specialist matching (`/api/v1/ai/match/`) is rule-based
-  and always works. Basic Q&A (`/api/v1/ai/ask/`) is proxied to Groq — add
-  `GROQ_API_KEY` (free, no card, from <https://console.groq.com>) as a Railway
-  variable to enable real answers; without it the endpoint returns a safe canned
-  reply. Optional `GROQ_MODEL` (default `llama-3.3-70b-versatile`). Crisis input
-  is always short-circuited to emergency resources and never sent to the model.
+- **AI navigator (Claude):** specialist matching (`/api/v1/ai/match/`) is rule-based
+  and always works. Basic Q&A (`/api/v1/ai/ask/`) is proxied to Anthropic's Claude
+  (Messages API) — add `ANTHROPIC_API_KEY` (from <https://console.anthropic.com>) as
+  a Railway variable to enable real answers; without it the endpoint returns a safe
+  canned reply. Optional `ANTHROPIC_MODEL` (default `claude-opus-4-8`). The key lives
+  only in Railway Variables — it never ships in the app. Crisis input is always
+  short-circuited to emergency resources and never sent to the model.

@@ -154,6 +154,30 @@ client `demo.client1@nuva.kz` / `Demo12345`.
   (`git tag savepoint/...`). Pushing `main` redeploys Railway; shipping the frontend
   means rebuilding + pushing `gh-pages` (see *How it's deployed*).
 
+## Working a task (process — follow this every time)
+
+For every change, in this order:
+
+1. **Plan before touching code.** Outline the approach and the files/endpoints
+   you'll touch first. If the task prompt says "show the plan and wait for OK"
+   (payments, models, data-rights, anything irreversible), do that and **wait**
+   before writing code.
+2. **Follow the task prompt and the existing architecture.** Stay inside the
+   patterns this file describes (Riverpod providers + `api_client`, `S.of(ref)`
+   strings, `context.nuva` theme, DRF apps with object-level ownership). Don't
+   introduce a parallel way of doing something that already has a convention.
+3. **Write or extend tests for the change.** Backend: add/extend the app's
+   `tests.py` and run `python manage.py test` (e.g. webhook signature +
+   idempotency, ownership checks, status transitions). Frontend: at minimum keep
+   `flutter analyze` clean and add widget/unit tests for new logic.
+4. **Commit only after tests pass.** Run the tests (and `flutter analyze`) first;
+   if green, commit the increment with a savepoint tag, then push (`main`
+   redeploys the backend; frontend ships via `gh-pages`). Never commit on red.
+5. **Keep this file current (memory).** If a change alters the architecture,
+   conventions, env vars, or deploy flow, update the relevant section of
+   `CLAUDE.md` in the same change — this file is the project's memory, so a stale
+   line here costs every future session.
+
 ## Security-sensitive areas (be careful here)
 
 This app handles **special-category personal data** (mental-health) plus payments

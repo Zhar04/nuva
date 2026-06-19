@@ -38,7 +38,6 @@ nuva_app/
 │   │   ├── backend.dart               # Supabase init (graceful fallback)
 │   │   ├── auth_service.dart
 │   │   ├── db_service.dart
-│   │   ├── claude_service.dart        # прямой или через прокси
 │   │   └── observability.dart         # Sentry-stub
 │   ├── router/app_router.dart
 │   └── screens/
@@ -58,8 +57,6 @@ nuva_app/
 │       ├── profile_screen.dart
 │       ├── legal_screens.dart         # Privacy / Terms / About
 │       └── main_shell.dart            # bottom-nav
-├── server/
-│   └── cloudflare-worker.js           # Claude-прокси для prod
 ├── supabase/
 │   └── schema.sql                     # таблицы + RLS + сид
 ├── assets/

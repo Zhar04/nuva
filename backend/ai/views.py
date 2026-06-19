@@ -1,10 +1,12 @@
-"""AI navigator: rule-based specialist matching + a Groq-proxied Q&A helper.
+"""AI navigator: rule-based specialist matching + a Claude-proxied Q&A helper.
 
 Design choices:
 - Matching is deterministic (no LLM) — it's a scoring problem over real tags,
   so it can't hallucinate a specialist.
-- Q&A is proxied to Groq (free API) with the key kept server-side. It degrades
-  gracefully to a safe canned reply when no key is configured or Groq errors.
+- Q&A is proxied to Anthropic's Claude (Messages API) with the key kept
+  server-side (ANTHROPIC_API_KEY, set only in Railway Variables — never shipped
+  in the app). It degrades gracefully to a safe canned reply when no key is
+  configured or Claude errors.
 - This is a *navigator*, never a therapist: crisis input short-circuits to
   emergency resources and never reaches the model.
 """
@@ -55,30 +57,35 @@ SYSTEM_PROMPT = (
     "записаться к специалисту в приложении Nuva. Не обещай вылечить."
 )
 
+# Anthropic Messages API. The key never leaves the server (Railway Variables);
+# the model is overridable via env so the team can trade cost/latency without a
+# code change — see the claude-api skill for current model ids.
+ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+DEFAULT_MODEL = "claude-opus-4-8"
+
 
 def _is_crisis(text: str) -> bool:
     low = text.lower()
     return any(term in low for term in CRISIS_TERMS)
 
 
-def _groq_chat(message: str, key: str, model: str) -> str:
+def _claude_chat(message: str, key: str, model: str) -> str:
     payload = {
         "model": model,
-        "temperature": 0.6,
         "max_tokens": 500,
+        "system": SYSTEM_PROMPT,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": message},
         ],
     }
     req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
+        ANTHROPIC_ENDPOINT,
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-            # Groq is behind Cloudflare, which 403s the default Python-urllib
-            # User-Agent (error 1010). A normal UA passes.
+            "x-api-key": key,
+            "anthropic-version": ANTHROPIC_VERSION,
+            "content-type": "application/json",
             "User-Agent": "Nuva-Backend/1.0 (+https://nuva.kz)",
             "Accept": "application/json",
         },
@@ -86,7 +93,14 @@ def _groq_chat(message: str, key: str, model: str) -> str:
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read().decode("utf-8"))
-    return data["choices"][0]["message"]["content"].strip()
+    # Messages API returns content as a list of typed blocks; keep the text ones.
+    blocks = data.get("content") or []
+    text = "".join(
+        b.get("text", "") for b in blocks if b.get("type") == "text"
+    ).strip()
+    if not text:
+        raise ValueError("empty_completion")
+    return text
 
 
 class MatchView(APIView):
@@ -153,7 +167,7 @@ class MatchView(APIView):
 
 class AskView(APIView):
     """POST {message} → a short navigator reply. Crisis input short-circuits to
-    emergency resources; otherwise proxied to Groq (graceful fallback)."""
+    emergency resources; otherwise proxied to Claude (graceful fallback)."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -167,15 +181,15 @@ class AskView(APIView):
         if _is_crisis(message):
             return Response({"reply": CRISIS_REPLY, "crisis": True})
 
-        key = os.getenv("GROQ_API_KEY", "").strip()
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+        key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+        model = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
         if not key:
             return Response(
                 {"reply": FALLBACK_REPLY, "crisis": False, "degraded": True,
                  "reason": "no_key"}
             )
         try:
-            reply = _groq_chat(message, key, model)
+            reply = _claude_chat(message, key, model)
             return Response({"reply": reply, "crisis": False, "model": model})
         except urllib.error.HTTPError as e:
             body = ""
