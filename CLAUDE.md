@@ -81,7 +81,16 @@ Django 5 + DRF + SimpleJWT. Apps:
   completed, plus declined / cancelled / refunded) + `ClientNote`. Endpoints:
   `bookings/`, `bookings/incoming`, `bookings/{id}/{accept,decline,pay}`,
   `bookings/clients/{id}` (the psychologist's private client card: concern, mood
-  trend, notes, session history).
+  trend, notes, session history). **"Поговорить сейчас" instant funnel:**
+  `bookings/instant` (match an available psychologist now → free promo booking,
+  else `{available:false}`), `bookings/instant/request` (+ `{id}/{cancel,claim}`,
+  `instant/queue`) for the callback fallback. A free instant session is
+  `is_promo=True, source="instant", price=0, fee=0` — analytics/commission key
+  off `is_promo` so the freebie is excluded while later paid sessions aren't.
+  Availability = `Specialist.is_instant_available()` (`accepts_instant` +
+  verified + `instant_until` not past); the psychologist flips the cabinet
+  "Доступен сейчас" toggle (1-hour window). Ownership: a client polls/cancels
+  only their own request; only a verified psychologist claims, once.
 - `chat` — 1:1 `Conversation` + `Message`, with a video-call request/accept handshake.
 - `community` — anonymous posts + replies + likes.
 - `journal` — daily `MoodEntry` (1 per day) + gamification stats.
@@ -127,6 +136,14 @@ own incoming bookings / client cards).
   network failure, ranks `specialistCatalog` locally (offline-safe, no lead sent).
   `lead_capture.dart` stashes the lead id + answers; `auth_screen` calls
   `linkPendingLead` after register and seeds the profile bio.
+- **"Поговорить сейчас" (`instant_screen.dart`, auth-gated `/instant`):** an FSM
+  funnel (searching → matched | fallback | waiting | claimed | offline). Match →
+  free promo booking → pick video (`/call/conv<id>`) or chat (`/chats/<id>`). No
+  one available → leave an `InstantRequest` (fallback also offers the intake bot
+  + catalog), polled every 6s until a psychologist claims it. Entry: the urgent
+  `_TalkNowAction` CTA on `home_screen.dart`. Offline → degrade to a 150-helpline
+  notice + catalog (never crashes). Video still uses public Jitsi — TODO(prod)
+  self-host/JaaS before launch (special-category data); see docs/VIDEO_CALL.md.
 - **Design system:** `lib/theme/` (`tokens.dart`, `theme.dart`) + `lib/widgets/`
   (`glass.dart` = GlassCard / GlassBackdrop, `avatar.dart` = GradientAvatar / Tag /
   SectionLabel). Reach theme via the `context.nuva` extension.

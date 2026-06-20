@@ -940,4 +940,118 @@ class S {
         AppLang.kk: 'Жауаптар тіркелгенге дейін анонимді және тек таңдау үшін қолданылады.',
         AppLang.en: 'Answers stay anonymous until you register and are used only for matching.',
       });
+
+  // ─── "Поговорить сейчас" instant funnel ─────────────────────────
+  String get talkNow => _pick({
+        AppLang.ru: 'Поговорить сейчас',
+        AppLang.kk: 'Қазір сөйлесу',
+        AppLang.en: 'Talk now',
+      });
+  String get talkNowSub => _pick({
+        AppLang.ru: 'Найдём свободного психолога прямо сейчас',
+        AppLang.kk: 'Қазір бос психологты табамыз',
+        AppLang.en: 'Find an available psychologist right now',
+      });
+  String get instantSearching => _pick({
+        AppLang.ru: 'Ищем свободного психолога…',
+        AppLang.kk: 'Бос психолог іздеудеміз…',
+        AppLang.en: 'Finding an available psychologist…',
+      });
+  String get instantMatched => _pick({
+        AppLang.ru: 'Психолог готов поговорить',
+        AppLang.kk: 'Психолог сөйлесуге дайын',
+        AppLang.en: 'A psychologist is ready',
+      });
+  String get instantPickChannel => _pick({
+        AppLang.ru: 'Как удобнее начать?',
+        AppLang.kk: 'Қалай бастаған ыңғайлы?',
+        AppLang.en: 'How would you like to start?',
+      });
+  String get instantVideo => _pick({
+        AppLang.ru: 'Видеозвонок',
+        AppLang.kk: 'Бейнеқоңырау',
+        AppLang.en: 'Video call',
+      });
+  String get instantChat => _pick({
+        AppLang.ru: 'Чат',
+        AppLang.kk: 'Чат',
+        AppLang.en: 'Chat',
+      });
+  String get instantFree => _pick({
+        AppLang.ru: 'Первая сессия — бесплатно',
+        AppLang.kk: 'Алғашқы сессия — тегін',
+        AppLang.en: 'First session is free',
+      });
+  String get instantNoneTitle => _pick({
+        AppLang.ru: 'Сейчас никто не на связи',
+        AppLang.kk: 'Қазір ешкім желіде жоқ',
+        AppLang.en: 'No one is available right now',
+      });
+  String instantNoneBody(int minutes) => _pick({
+        AppLang.ru: 'Оставьте заявку — психолог свяжется в течение $minutes минут. А пока можно поговорить с ботом-помощником.',
+        AppLang.kk: 'Өтінім қалдырыңыз — психолог $minutes минут ішінде хабарласады. Әзірге бот-көмекшімен сөйлесуге болады.',
+        AppLang.en: 'Leave a request — a psychologist will reach out within $minutes minutes. Meanwhile you can talk to the assistant bot.',
+      });
+  String get instantLeaveRequest => _pick({
+        AppLang.ru: 'Оставить заявку',
+        AppLang.kk: 'Өтінім қалдыру',
+        AppLang.en: 'Leave a request',
+      });
+  String get instantTalkToBot => _pick({
+        AppLang.ru: 'Пока поговорить с ботом',
+        AppLang.kk: 'Әзірге ботпен сөйлесу',
+        AppLang.en: 'Talk to the bot for now',
+      });
+  String get instantBrowseCatalog => _pick({
+        AppLang.ru: 'Смотреть каталог психологов',
+        AppLang.kk: 'Психологтар каталогы',
+        AppLang.en: 'Browse the catalog',
+      });
+  String get instantWaitingTitle => _pick({
+        AppLang.ru: 'Заявка отправлена',
+        AppLang.kk: 'Өтінім жіберілді',
+        AppLang.en: 'Request sent',
+      });
+  String instantWaitingBody(int minutes) => _pick({
+        AppLang.ru: 'Психолог свяжется в течение $minutes минут. Можно закрыть экран — мы уведомим, когда кто-то примет заявку.',
+        AppLang.kk: 'Психолог $minutes минут ішінде хабарласады. Экранды жабуға болады — біреу өтінімді қабылдағанда хабарлаймыз.',
+        AppLang.en: 'A psychologist will reach out within $minutes minutes. You can close this screen — we’ll notify you when someone picks it up.',
+      });
+  String get instantClaimed => _pick({
+        AppLang.ru: 'Психолог принял заявку!',
+        AppLang.kk: 'Психолог өтінімді қабылдады!',
+        AppLang.en: 'A psychologist accepted!',
+      });
+  String get instantStartSession => _pick({
+        AppLang.ru: 'Начать сессию',
+        AppLang.kk: 'Сессияны бастау',
+        AppLang.en: 'Start the session',
+      });
+  String get instantCancelRequest => _pick({
+        AppLang.ru: 'Отменить заявку',
+        AppLang.kk: 'Өтінімнен бас тарту',
+        AppLang.en: 'Cancel request',
+      });
+  String get instantOfflineTitle => _pick({
+        AppLang.ru: 'Нет связи с сервером',
+        AppLang.kk: 'Сервермен байланыс жоқ',
+        AppLang.en: 'No connection to the server',
+      });
+  String get instantOfflineBody => _pick({
+        AppLang.ru: 'Мгновенный подбор недоступен офлайн. Если нужна срочная помощь — позвоните на линию доверия 150.',
+        AppLang.kk: 'Жедел таңдау офлайн қолжетімсіз. Шұғыл көмек қажет болса — 150 сенім желісіне қоңырау шалыңыз.',
+        AppLang.en: 'Instant matching is unavailable offline. If you need urgent help, call the helpline at 150.',
+      });
+
+  // Cabinet toggle (psychologist) — RU-only cabinet, kept simple cross-lang.
+  String get cabinetInstantToggle => _pick({
+        AppLang.ru: 'Доступен сейчас',
+        AppLang.kk: 'Қазір қолжетімді',
+        AppLang.en: 'Available now',
+      });
+  String get cabinetInstantHint => _pick({
+        AppLang.ru: 'Принимать мгновенные сессии «Поговорить сейчас» (на 1 час)',
+        AppLang.kk: '«Қазір сөйлесу» жедел сессияларын қабылдау (1 сағатқа)',
+        AppLang.en: 'Accept instant “Talk now” sessions (for 1 hour)',
+      });
 }

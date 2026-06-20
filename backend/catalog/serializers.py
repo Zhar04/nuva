@@ -16,14 +16,19 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class SpecialistListSerializer(serializers.ModelSerializer):
+    instant_available = serializers.SerializerMethodField()
+
     class Meta:
         model = Specialist
         fields = (
             "id", "first_name", "last_name", "title", "years_experience",
             "languages", "approaches", "works_with", "session_price_kzt",
             "rating", "review_count", "about", "diplomas", "avatar_gradient",
-            "availability", "is_verified", "is_active",
+            "availability", "is_verified", "is_active", "instant_available",
         )
+
+    def get_instant_available(self, obj):
+        return obj.is_instant_available()
 
 
 class SpecialistDetailSerializer(SpecialistListSerializer):
@@ -48,6 +53,7 @@ class SpecialistMeSerializer(serializers.ModelSerializer):
             "first_name", "last_name", "title", "years_experience",
             "languages", "approaches", "works_with", "session_price_kzt",
             "about", "diplomas", "avatar_gradient", "availability", "is_active",
+            "accepts_instant", "instant_until",
             "education",
         )
 

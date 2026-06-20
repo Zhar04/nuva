@@ -33,6 +33,10 @@ class Specialist {
   /// sorted list of "HH:mm" start times.
   final Map<int, List<String>> availability;
 
+  /// "Доступен сейчас" — ready for an instant ("поговорить сейчас") session.
+  /// Server-computed (accepts_instant + verified + not expired).
+  final bool instantAvailable;
+
   const Specialist({
     required this.id,
     required this.firstName,
@@ -54,6 +58,7 @@ class Specialist {
     required this.avatarGradient,
     this.isVerified = true,
     this.availability = const {},
+    this.instantAvailable = false,
   });
 
   String get fullName => '$firstName $lastName';
@@ -98,6 +103,7 @@ class Specialist {
           : const [Color(0xFF7FB7E8), Color(0xFFA3D8F4)],
       isVerified: (m['is_verified'] as bool?) ?? false,
       availability: _parseAvailability(m['availability']),
+      instantAvailable: (m['instant_available'] as bool?) ?? false,
     );
   }
 

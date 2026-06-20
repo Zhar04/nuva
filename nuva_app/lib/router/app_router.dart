@@ -10,6 +10,7 @@ import '../screens/chat_list_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/community_compose_screen.dart';
 import '../screens/community_post_screen.dart';
+import '../screens/instant_screen.dart';
 import '../screens/intake_screen.dart';
 import '../screens/legal_screens.dart';
 import '../screens/main_shell.dart';
@@ -184,6 +185,13 @@ Future<GoRouter> buildRouter(ProviderContainer container) async {
 
       // Entry quiz (public — reachable by a guest before auth).
       GoRoute(path: '/quiz', builder: (_, __) => const QuizScreen()),
+
+      // "Поговорить сейчас" funnel (auth-gated — creates a booking).
+      GoRoute(
+        path: '/instant',
+        builder: (_, st) =>
+            InstantScreen(concern: st.uri.queryParameters['concern'] ?? ''),
+      ),
 
       // Detail screens (pushed on top).
       GoRoute(path: '/intake', builder: (_, __) => const IntakeScreen()),

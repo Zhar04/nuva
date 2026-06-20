@@ -25,6 +25,11 @@ class Booking(models.Model):
         INTRO = "intro", "Ознакомительная сессия"
         PACKAGE = "package", "Пакет сессий"
 
+    class Source(models.TextChoices):
+        MANUAL = "manual", "Обычная бронь"
+        INSTANT = "instant", "Поговорить сейчас"
+        QUIZ = "quiz", "Из квиза"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, related_name="bookings", on_delete=models.CASCADE
     )
@@ -48,6 +53,17 @@ class Booking(models.Model):
     )
     is_intro = models.BooleanField(
         default=False, help_text="Бесплатная ознакомительная сессия"
+    )
+    # A promo/free session must NOT make repeat sessions free or fee-exempt:
+    # analytics and the commission split key off is_promo, so a promo intro is
+    # excluded from revenue/commission while a later paid session is not.
+    is_promo = models.BooleanField(
+        default=False,
+        help_text="Промо/бесплатная мгновенная сессия — не основа для комиссии",
+    )
+    source = models.CharField(
+        max_length=10, choices=Source.choices, default=Source.MANUAL,
+        help_text="Откуда пришла бронь (для аналитики)",
     )
     concern = models.CharField(
         max_length=80, blank=True, default="",
@@ -105,3 +121,60 @@ class ClientNote(models.Model):
 
     def __str__(self):
         return f"Заметка {self.specialist} о {self.client}"
+
+
+class InstantRequest(models.Model):
+    """A "поговорить сейчас" callback request — created when no specialist is
+    instantly available, so a psychologist can claim it within X minutes.
+
+    Object-level ownership: a request is visible/cancellable only by its `user`,
+    and claimable only by a verified psychologist. On claim it spawns a free
+    promo Booking (see views) so the live session reuses the booking lifecycle.
+    """
+
+    class Status(models.TextChoices):
+        WAITING = "waiting", "Ждёт психолога"
+        CLAIMED = "claimed", "Психолог принял"
+        EXPIRED = "expired", "Истекла"
+        CANCELLED = "cancelled", "Отменена"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="instant_requests",
+        on_delete=models.CASCADE,
+    )
+    concern = models.CharField(max_length=80, blank=True, default="")
+    channel = models.CharField(
+        max_length=10, choices=Booking.Format.choices,
+        default=Booking.Format.VIDEO,
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.WAITING
+    )
+    respond_within_min = models.PositiveSmallIntegerField(
+        default=15, help_text="Обещанное время отклика, мин (из настроек)"
+    )
+    specialist = models.ForeignKey(
+        "catalog.Specialist",
+        null=True,
+        blank=True,
+        related_name="instant_requests",
+        on_delete=models.SET_NULL,
+    )
+    booking = models.ForeignKey(
+        Booking,
+        null=True,
+        blank=True,
+        related_name="instant_request",
+        on_delete=models.SET_NULL,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Заявка «поговорить сейчас»"
+        verbose_name_plural = "Заявки «поговорить сейчас»"
+
+    def __str__(self):
+        return f"InstantRequest #{self.pk} ({self.user}) [{self.status}]"

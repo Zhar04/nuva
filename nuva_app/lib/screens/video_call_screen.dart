@@ -15,6 +15,12 @@ import '../services/backend_auth.dart';
 /// Jitsi works normally. Override the instance with `JITSI_DOMAIN` in `.env`.
 /// For a fully in-app, branded call, self-host Jitsi or use JaaS — see
 /// docs/VIDEO_CALL.md.
+///
+/// TODO(prod): a public Jitsi instance is NOT private enough for mental-health
+/// sessions (special-category data, №94-V) — the room name is guessable and the
+/// media path is third-party. Before launch, point JITSI_DOMAIN at a self-hosted
+/// instance or JaaS with auth/JWT room tokens. The instant funnel relies on this
+/// same screen, so the fix covers both. See docs/VIDEO_CALL.md.
 class VideoCallScreen extends ConsumerWidget {
   final String roomSeed;
   const VideoCallScreen({super.key, required this.roomSeed});

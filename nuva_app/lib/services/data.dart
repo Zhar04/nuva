@@ -306,6 +306,21 @@ class PsyActions {
     await _api.put('bookings/clients/$clientId', {'text': text}, token: _token);
     ref.invalidate(clientCardProvider(clientId));
   }
+
+  /// Toggle "Доступен сейчас" for the instant funnel. When turning on, set a
+  /// 1-hour window so the status auto-expires if the psychologist forgets it.
+  /// Partial PUT on /specialists/me leaves the rest of the profile untouched.
+  Future<void> setInstantAvailable(bool on) async {
+    final until = on
+        ? DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String()
+        : null;
+    await _api.put(
+      'specialists/me',
+      {'accepts_instant': on, 'instant_until': until},
+      token: _token,
+    );
+    ref.invalidate(specialistMeProvider);
+  }
 }
 
 final psyActionsProvider = Provider<PsyActions>((ref) => PsyActions(ref));

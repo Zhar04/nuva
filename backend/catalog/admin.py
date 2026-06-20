@@ -17,9 +17,9 @@ class ReviewInline(admin.TabularInline):
 class SpecialistAdmin(admin.ModelAdmin):
     list_display = (
         "first_name", "last_name", "title", "session_price_kzt",
-        "rating", "review_count", "is_verified", "is_active",
+        "rating", "review_count", "is_verified", "is_active", "accepts_instant",
     )
-    list_filter = ("is_verified", "is_active")
+    list_filter = ("is_verified", "is_active", "accepts_instant")
     search_fields = ("first_name", "last_name", "title")
     inlines = [EducationInline, ReviewInline]
     fieldsets = (
@@ -30,6 +30,7 @@ class SpecialistAdmin(admin.ModelAdmin):
         )}),
         ("Статус", {"fields": (
             "rating", "review_count", "is_verified", "is_active",
+            "accepts_instant", "instant_until",
         )}),
     )
 

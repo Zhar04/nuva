@@ -75,6 +75,12 @@ class HomeScreen extends ConsumerWidget {
                 _MyBookings(),
                 const SizedBox(height: 18),
                 SectionLabel(label: 'Быстрые действия'),
+                _TalkNowAction(
+                  title: s.talkNow,
+                  sub: s.talkNowSub,
+                  onTap: () => context.push('/instant'),
+                ),
+                const SizedBox(height: 12),
                 _PrimaryAction(
                   icon: Icons.auto_awesome_rounded,
                   title: s.aiHelp,
@@ -672,6 +678,91 @@ class _UpcomingSession extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Urgent "поговорить сейчас" CTA — visually distinct from the calmer actions
+/// so the instant funnel reads as the fastest path to a live psychologist.
+class _TalkNowAction extends StatelessWidget {
+  final String title;
+  final String sub;
+  final VoidCallback onTap;
+  const _TalkNowAction({
+    required this.title,
+    required this.sub,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [t.teal, t.blue],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: t.teal.withValues(alpha: t.dark ? 0.34 : 0.30),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Colors.white, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                          )),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(sub,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12.5)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 13, color: Colors.white),
+          ],
+        ),
       ),
     );
   }

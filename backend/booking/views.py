@@ -1,17 +1,20 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import Specialist
 
-from .models import Booking, ClientNote
+from .models import Booking, ClientNote, InstantRequest
 from .serializers import (
     BookingCreateSerializer,
     BookingDeclineSerializer,
     BookingSerializer,
     ClientNoteSerializer,
     ClientSessionSerializer,
+    InstantRequestSerializer,
 )
 
 
@@ -24,6 +27,30 @@ def _ensure_conversation(booking):
         user=booking.user, specialist=booking.specialist
     )
     return convo
+
+
+def _create_promo_booking(user, specialist, *, channel="video", concern=""):
+    """Create a free, fee-exempt "поговорить сейчас" session, starting now.
+
+    Marked is_promo + source=INSTANT so analytics and the commission split never
+    treat this freebie as revenue — a later paid session is billed normally.
+    """
+    booking = Booking.objects.create(
+        user=user,
+        specialist=specialist,
+        starts_at=timezone.now(),
+        format=channel,
+        price_kzt=0,
+        service_fee_kzt=0,
+        status=Booking.Status.SCHEDULED,
+        intent=Booking.Intent.INTRO,
+        is_intro=True,
+        is_promo=True,
+        source=Booking.Source.INSTANT,
+        concern=concern[:80],
+    )
+    _ensure_conversation(booking)
+    return booking
 
 
 class BookingListCreateView(generics.ListCreateAPIView):
@@ -228,3 +255,132 @@ class ClientCardView(APIView):
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response(ser.data)
+
+
+# ─── "Поговорить сейчас" funnel ───────────────────────────────────────
+
+
+def _pick_instant_specialist():
+    """The best specialist who can take a live session right now (highest
+    rating wins). Returns None when nobody is available."""
+    now = timezone.now()
+    qs = Specialist.objects.filter(
+        is_active=True, is_verified=True, accepts_instant=True
+    ).order_by("-rating", "id")
+    for sp in qs:
+        if sp.instant_until is None or sp.instant_until > now:
+            return sp
+    return None
+
+
+class InstantMatchView(APIView):
+    """POST /bookings/instant — try to connect the client with an available
+    psychologist right now. On success creates a free promo booking and returns
+    it (with the conversation id) so the client can pick video or chat. On
+    failure returns {available: false} so the app shows the fallback."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        concern = (request.data.get("concern") or "").strip()
+        sp = _pick_instant_specialist()
+        if sp is None:
+            return Response(
+                {"available": False,
+                 "respond_within_min": settings.INSTANT_RESPOND_MIN}
+            )
+        booking = _create_promo_booking(
+            request.user, sp, channel="video", concern=concern
+        )
+        return Response(
+            {"available": True, "booking": BookingSerializer(booking).data},
+            status=201,
+        )
+
+
+class InstantRequestCreateView(APIView):
+    """POST /bookings/instant/request — no one is available now, so leave a
+    callback request a psychologist can claim within X minutes."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        channel = request.data.get("channel") or Booking.Format.VIDEO
+        if channel not in Booking.Format.values:
+            channel = Booking.Format.VIDEO
+        req = InstantRequest.objects.create(
+            user=request.user,
+            concern=(request.data.get("concern") or "").strip()[:80],
+            channel=channel,
+            respond_within_min=settings.INSTANT_RESPOND_MIN,
+        )
+        return Response(InstantRequestSerializer(req).data, status=201)
+
+
+class InstantRequestDetailView(APIView):
+    """GET /bookings/instant/request/{id} — the owner polls their waiting
+    request; POST .../cancel withdraws it. Owner-only."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        req = get_object_or_404(InstantRequest, pk=pk, user=request.user)
+        return Response(InstantRequestSerializer(req).data)
+
+
+class InstantRequestCancelView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        req = get_object_or_404(InstantRequest, pk=pk, user=request.user)
+        if req.status == InstantRequest.Status.WAITING:
+            req.status = InstantRequest.Status.CANCELLED
+            req.save(update_fields=["status"])
+        return Response(InstantRequestSerializer(req).data)
+
+
+class InstantRequestQueueView(generics.ListAPIView):
+    """GET /bookings/instant/queue — waiting callback requests, for a verified
+    psychologist to pick up. Only psychologists see the queue."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+    serializer_class = InstantRequestSerializer
+
+    def get_queryset(self):
+        sp = getattr(self.request.user, "specialist_profile", None)
+        if sp is None or not sp.is_verified:
+            return InstantRequest.objects.none()
+        return InstantRequest.objects.filter(
+            status=InstantRequest.Status.WAITING
+        ).select_related("user")
+
+
+class InstantRequestClaimView(APIView):
+    """POST /bookings/instant/request/{id}/claim — a verified psychologist
+    accepts a waiting request. Spawns a free promo booking and links it. A
+    request already claimed/cancelled can't be re-claimed."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        sp = getattr(request.user, "specialist_profile", None)
+        if sp is None or not sp.is_verified:
+            return Response(
+                {"detail": "Только проверенный психолог может принять заявку."},
+                status=403,
+            )
+        req = get_object_or_404(InstantRequest, pk=pk)
+        if req.status != InstantRequest.Status.WAITING:
+            return Response(
+                {"detail": "Заявка уже занята или закрыта."}, status=409
+            )
+        booking = _create_promo_booking(
+            req.user, sp, channel=req.channel, concern=req.concern
+        )
+        req.status = InstantRequest.Status.CLAIMED
+        req.specialist = sp
+        req.booking = booking
+        req.claimed_at = timezone.now()
+        req.save(update_fields=["status", "specialist", "booking", "claimed_at"])
+        return Response(InstantRequestSerializer(req).data)

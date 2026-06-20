@@ -195,3 +195,7 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 
 # ─── Secrets used by later sprints ────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# "Поговорить сейчас": promised response time (minutes) shown to the client and
+# stamped on each callback InstantRequest. Tunable without a code change.
+INSTANT_RESPOND_MIN = int(os.getenv("INSTANT_RESPOND_MIN", "15"))

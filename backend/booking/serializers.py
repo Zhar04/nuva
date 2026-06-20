@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from catalog.models import Specialist
 
-from .models import Booking, ClientNote
+from .models import Booking, ClientNote, InstantRequest
 
 
 class BookingSpecialistSerializer(serializers.ModelSerializer):
@@ -23,7 +23,8 @@ class BookingSerializer(serializers.ModelSerializer):
             "id", "specialist", "client_name", "client_id", "conversation_id",
             "starts_at", "format", "duration_minutes",
             "price_kzt", "service_fee_kzt", "status",
-            "intent", "is_intro", "concern", "client_message", "match_score",
+            "intent", "is_intro", "is_promo", "source",
+            "concern", "client_message", "match_score",
             "decline_reason", "proposed_starts_at", "created_at",
         )
 
@@ -71,3 +72,24 @@ class ClientSessionSerializer(serializers.ModelSerializer):
             "id", "starts_at", "format", "status", "price_kzt",
             "is_intro", "concern",
         )
+
+
+class InstantRequestSerializer(serializers.ModelSerializer):
+    """Read view of a callback request, for the client's waiting screen and the
+    psychologist's claim list. Booking is surfaced so the claimer/owner can jump
+    into the live session."""
+
+    booking = BookingSerializer(read_only=True)
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InstantRequest
+        fields = (
+            "id", "concern", "channel", "status", "respond_within_min",
+            "client_name", "booking", "created_at", "claimed_at",
+        )
+        read_only_fields = fields
+
+    def get_client_name(self, obj):
+        n = (obj.user.name or "").strip()
+        return n if n else "Клиент"

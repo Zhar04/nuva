@@ -24,6 +24,8 @@ class AppBooking {
   // ── Request metadata ──
   final String intent; // intro | package
   final bool isIntro;
+  final bool isPromo; // free instant/promo session — excluded from commission
+  final String source; // manual | instant | quiz
   final String concern; // "что беспокоит"
   final String clientMessage;
   final int matchScore; // % совпадения
@@ -46,6 +48,8 @@ class AppBooking {
     this.conversationId,
     this.intent = 'intro',
     this.isIntro = false,
+    this.isPromo = false,
+    this.source = 'manual',
     this.concern = '',
     this.clientMessage = '',
     this.matchScore = 0,
@@ -127,6 +131,8 @@ class AppBooking {
       conversationId: (m['conversation_id'] as num?)?.toInt(),
       intent: (m['intent'] ?? 'intro') as String,
       isIntro: (m['is_intro'] as bool?) ?? false,
+      isPromo: (m['is_promo'] as bool?) ?? false,
+      source: (m['source'] ?? 'manual') as String,
       concern: (m['concern'] ?? '') as String,
       clientMessage: (m['client_message'] ?? '') as String,
       matchScore: (m['match_score'] as num?)?.toInt() ?? 0,

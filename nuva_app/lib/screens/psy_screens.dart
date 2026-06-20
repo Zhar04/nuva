@@ -334,6 +334,11 @@ class PsyTodayScreen extends ConsumerWidget {
                   const _VerifyBanner(),
                   const SizedBox(height: 14),
                 ],
+                // "Доступен сейчас" toggle — opts in to the instant funnel.
+                if (me != null && me.isVerified) ...[
+                  const _InstantToggle(),
+                  const SizedBox(height: 14),
+                ],
                 // next session hero
                 _NextSessionHero(next: next),
                 const SizedBox(height: 18),
@@ -381,6 +386,83 @@ class PsyTodayScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "Доступен сейчас" toggle for the instant ("поговорить сейчас") funnel.
+/// Optimistic: flips immediately, reverts on error. Turning on sets a 1-hour
+/// window server-side, so the status quietly expires if left on.
+class _InstantToggle extends ConsumerStatefulWidget {
+  const _InstantToggle();
+  @override
+  ConsumerState<_InstantToggle> createState() => _InstantToggleState();
+}
+
+class _InstantToggleState extends ConsumerState<_InstantToggle> {
+  bool? _optimistic;
+  bool _busy = false;
+
+  Future<void> _toggle(bool on) async {
+    setState(() {
+      _optimistic = on;
+      _busy = true;
+    });
+    try {
+      await ref.read(psyActionsProvider).setInstantAvailable(on);
+    } catch (_) {
+      if (mounted) setState(() => _optimistic = !on); // revert
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(ref);
+    final t = context.nuva;
+    final me = ref.watch(specialistMeProvider).valueOrNull;
+    final on = _optimistic ?? (me?.instantAvailable ?? false);
+    return GlassCard(
+      elevated: true,
+      radius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: (on ? t.teal : t.textTer).withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.bolt_rounded,
+                color: on ? t.teal : t.textTer, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.cabinetInstantToggle,
+                    style: TextStyle(
+                        color: t.text,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(s.cabinetInstantHint,
+                    style: TextStyle(
+                        color: t.textSec, fontSize: 11.5, height: 1.35)),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: on,
+            onChanged: _busy ? null : _toggle,
+            activeColor: t.teal,
+          ),
+        ],
       ),
     );
   }
