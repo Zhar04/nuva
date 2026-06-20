@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/user_profile.dart';
 import '../services/api_client.dart';
 import '../services/backend_auth.dart';
+import '../services/lead_capture.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
 
@@ -63,6 +64,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             password: password,
             name: _name.text.trim(),
             role: role.storage);
+        // Claim the anonymous entry-quiz lead (if any) for the new account and
+        // seed the profile bio with the request the visitor described.
+        try {
+          final lead = await linkPendingLead(
+            ref.read(apiClientProvider),
+            auth.accessToken,
+          );
+          final bioLine = lead?.bioLine ?? '';
+          if (bioLine.isNotEmpty &&
+              ref.read(userProfileProvider).bio.trim().isEmpty) {
+            await ref.read(userProfileProvider.notifier).update(bio: bioLine);
+          }
+        } catch (_) {/* never block sign-up on lead linking */}
         _snack('Аккаунт создан');
         if (mounted) {
           context.go(role == UserRole.psychologist

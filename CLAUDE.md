@@ -89,7 +89,17 @@ Django 5 + DRF + SimpleJWT. Apps:
   carry a dedicated scoped throttle (`ai` scope, default `15/min`, override via
   the `AI_THROTTLE_RATE` Railway var) on top of the global per-user rate — these
   calls bill Anthropic, so the tight cap bounds denial-of-wallet. `ask` caps the
-  message length; `match` caps the topics list.
+  message length; `match` caps the topics list. The deterministic ranking lives
+  in `ai.views.rank_specialists(...)` and is shared by `match` and `leads`.
+- `leads` — entry-quiz lead capture. `Lead` holds the branching quiz answers +
+  one contact handle + a consent flag (special-category data, №94-V). Endpoints:
+  `POST /api/v1/leads/` (**AllowAny**, anonymous — the only public write; runs
+  `rank_specialists` and returns `{lead_id, results}`; own `lead_create` throttle
+  scope, `LEAD_THROTTLE_RATE` env, default `10/min`) and
+  `POST /api/v1/leads/{id}/link/` (auth — claims the anonymous lead for the new
+  account; a lead linked to another user is never re-assignable). **Never log the
+  quiz answers** (no print/logger of the payload); the contact is validated
+  *positively* (phone/email/@handle) — do NOT route it through `has_contact`.
 
 Check object-level ownership on every endpoint (e.g. a psychologist only sees their
 own incoming bookings / client cards).
@@ -107,6 +117,16 @@ own incoming bookings / client cards).
   chat, community, mood journal, AI intake. Providers fall back to bundled sample
   catalogs **only** when the backend is unreachable (offline resilience) — keep
   that fallback intact so the app never hard-crashes.
+- **Entry quiz (`quiz_screen.dart`, public route `/quiz`):** a branching
+  lead-capture funnel run BEFORE auth (for-whom → topics → severity → goal →
+  format/lang → urgency/budget → contact+consent → matched specialists → register
+  CTA). Two entry points: the intro (`onboarding_screen.dart`) and the catalog
+  "Подбор" button (`specialists_screen.dart` — the old `_SmartMatchSheet` was
+  removed in favor of this). A "severe + self-harm" answer short-circuits to
+  crisis resources (112/150), never the sales flow. It POSTs to `leads/` and, on
+  network failure, ranks `specialistCatalog` locally (offline-safe, no lead sent).
+  `lead_capture.dart` stashes the lead id + answers; `auth_screen` calls
+  `linkPendingLead` after register and seeds the profile bio.
 - **Design system:** `lib/theme/` (`tokens.dart`, `theme.dart`) + `lib/widgets/`
   (`glass.dart` = GlassCard / GlassBackdrop, `avatar.dart` = GradientAvatar / Tag /
   SectionLabel). Reach theme via the `context.nuva` extension.

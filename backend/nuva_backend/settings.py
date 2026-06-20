@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "community",
     "journal",
     "ai",
+    "leads",
 ]
 
 MIDDLEWARE = [
@@ -173,6 +174,9 @@ REST_FRAMEWORK = {
         # bound denial-of-wallet even for an authenticated user. Override via env
         # without a code change if real usage needs more headroom.
         "ai": os.getenv("AI_THROTTLE_RATE", "15/min"),
+        # Anonymous entry-quiz lead capture — bound abuse of the public,
+        # unauthenticated endpoint. Override via env if needed.
+        "lead_create": os.getenv("LEAD_THROTTLE_RATE", "10/min"),
     },
 }
 

@@ -70,6 +70,71 @@ def _is_crisis(text: str) -> bool:
     return any(term in low for term in CRISIS_TERMS)
 
 
+def rank_specialists(topics, language="", limit=5):
+    """Deterministic specialist scoring over real tags — shared by the AI
+    `match` endpoint and the anonymous quiz/lead capture.
+
+    Returns a list of ``{"specialist": <serialized>, "match_score", "reasons"}``
+    dicts, highest match first. No LLM: it's a scoring problem over real
+    ``works_with`` / ``approaches`` / ``languages`` tags, so it can't
+    hallucinate a specialist.
+    """
+    if not isinstance(topics, list):
+        topics = [topics]
+    # Cap the topic list so a caller can't send a huge one (each is
+    # lower-cased and intersected against every specialist's tags).
+    topics = topics[:20]
+    wanted = {str(t).strip().lower()[:60] for t in topics if str(t).strip()}
+    language = (language or "").strip().lower()
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 5
+    limit = max(1, min(limit, 10))
+
+    ranked = []
+    for sp in Specialist.objects.filter(is_active=True):
+        works = {str(w).lower() for w in (sp.works_with or [])}
+        approaches = {str(a).lower() for a in (sp.approaches or [])}
+        langs = [str(x).lower() for x in (sp.languages or [])]
+        overlap = wanted & (works | approaches)
+
+        score = 55.0 + len(overlap) * 13
+        score += (float(sp.rating) - 4.5) * 8
+        if sp.is_verified:
+            score += 5
+        lang_ok = bool(language) and any(language in x for x in langs)
+        if lang_ok:
+            score += 6
+        score = int(max(40, min(99, round(score))))
+
+        reasons = []
+        if overlap:
+            shown = [w for w in (sp.works_with or [])
+                     if str(w).lower() in overlap][:3]
+            reasons.append("Работает с: " + ", ".join(shown))
+        if float(sp.rating) >= 4.7:
+            reasons.append(f"Высокий рейтинг · {sp.rating}")
+        if lang_ok:
+            reasons.append("Говорит на нужном языке")
+        if not reasons:
+            reasons.append("Подходит по общему профилю")
+
+        ranked.append((score, len(overlap), float(sp.rating), sp, reasons))
+
+    ranked.sort(key=lambda r: (r[0], r[1], r[2]), reverse=True)
+    ranked = ranked[:limit]
+
+    return [
+        {
+            "specialist": SpecialistListSerializer(sp).data,
+            "match_score": score,
+            "reasons": reasons,
+        }
+        for (score, _ov, _rt, sp, reasons) in ranked
+    ]
+
+
 def _claude_chat(message: str, key: str, model: str) -> str:
     payload = {
         "model": model,
@@ -111,61 +176,11 @@ class MatchView(APIView):
     throttle_scope = "ai"
 
     def post(self, request):
-        topics = request.data.get("topics") or []
-        if not isinstance(topics, list):
-            topics = [topics]
-        # Cap the number of topics so a caller can't send a huge list (each is
-        # lower-cased and intersected against every specialist's tags).
-        topics = topics[:20]
-        wanted = {str(t).strip().lower()[:60] for t in topics if str(t).strip()}
-        language = (request.data.get("language") or "").strip().lower()
-        try:
-            limit = int(request.data.get("limit", 5))
-        except (TypeError, ValueError):
-            limit = 5
-        limit = max(1, min(limit, 10))
-
-        ranked = []
-        for sp in Specialist.objects.filter(is_active=True):
-            works = {str(w).lower() for w in (sp.works_with or [])}
-            approaches = {str(a).lower() for a in (sp.approaches or [])}
-            langs = [str(x).lower() for x in (sp.languages or [])]
-            overlap = wanted & (works | approaches)
-
-            score = 55.0 + len(overlap) * 13
-            score += (float(sp.rating) - 4.5) * 8
-            if sp.is_verified:
-                score += 5
-            lang_ok = bool(language) and any(language in x for x in langs)
-            if lang_ok:
-                score += 6
-            score = int(max(40, min(99, round(score))))
-
-            reasons = []
-            if overlap:
-                shown = [w for w in (sp.works_with or [])
-                         if str(w).lower() in overlap][:3]
-                reasons.append("Работает с: " + ", ".join(shown))
-            if float(sp.rating) >= 4.7:
-                reasons.append(f"Высокий рейтинг · {sp.rating}")
-            if lang_ok:
-                reasons.append("Говорит на нужном языке")
-            if not reasons:
-                reasons.append("Подходит по общему профилю")
-
-            ranked.append((score, len(overlap), float(sp.rating), sp, reasons))
-
-        ranked.sort(key=lambda r: (r[0], r[1], r[2]), reverse=True)
-        ranked = ranked[:limit]
-
-        results = [
-            {
-                "specialist": SpecialistListSerializer(sp).data,
-                "match_score": score,
-                "reasons": reasons,
-            }
-            for (score, _ov, _rt, sp, reasons) in ranked
-        ]
+        results = rank_specialists(
+            request.data.get("topics") or [],
+            language=request.data.get("language") or "",
+            limit=request.data.get("limit", 5),
+        )
         return Response({"results": results})
 
 

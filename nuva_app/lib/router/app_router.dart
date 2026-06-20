@@ -22,6 +22,7 @@ import '../screens/payment_success_screen.dart';
 import '../screens/profile_edit_screen.dart';
 import '../screens/profile_subscreens.dart';
 import '../screens/progress_screen.dart';
+import '../screens/quiz_screen.dart';
 import '../screens/psy_cabinet_edit_screen.dart';
 import '../screens/psy_client_screen.dart';
 import '../screens/role_select_screen.dart';
@@ -40,6 +41,7 @@ const _publicPrefixes = <String>[
   '/onboarding',
   '/role',
   '/legal',
+  '/quiz',
 ];
 
 /// Whether [location] is reachable without a signed-in account. Exposed for
@@ -179,6 +181,9 @@ Future<GoRouter> buildRouter(ProviderContainer container) async {
       GoRoute(path: '/community', builder: (_, __) => const MainShell(initialTab: 2)),
       GoRoute(path: '/calm', builder: (_, __) => const MainShell(initialTab: 3)),
       GoRoute(path: '/profile', builder: (_, __) => const MainShell(initialTab: 4)),
+
+      // Entry quiz (public — reachable by a guest before auth).
+      GoRoute(path: '/quiz', builder: (_, __) => const QuizScreen()),
 
       // Detail screens (pushed on top).
       GoRoute(path: '/intake', builder: (_, __) => const IntakeScreen()),

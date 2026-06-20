@@ -78,7 +78,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         }
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
+                    // Entry point #1 into the matching quiz — guests can jump
+                    // straight to a personalized match before signing up.
+                    _QuizCta(
+                      label: s.quizCtaEntry,
+                      sub: s.quizCtaSub,
+                      onTap: () => context.push('/quiz'),
+                    ),
+                    const SizedBox(height: 10),
                     TextButton(
                       onPressed: _finish,
                       child: Text(
@@ -93,6 +101,57 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Secondary CTA on the intro that opens the matching quiz (lead capture).
+class _QuizCta extends StatelessWidget {
+  final String label;
+  final String sub;
+  final VoidCallback onTap;
+  const _QuizCta({required this.label, required this.sub, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    return GlassCard(
+      onTap: onTap,
+      elevated: true,
+      radius: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [t.blue, t.teal]),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.auto_awesome_rounded,
+                color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        color: t.text,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(sub,
+                    style: TextStyle(
+                        color: t.textSec, fontSize: 12, height: 1.35)),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: t.textTer),
+        ],
       ),
     );
   }

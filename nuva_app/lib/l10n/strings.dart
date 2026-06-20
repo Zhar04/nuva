@@ -666,4 +666,278 @@ class S {
         AppLang.kk: 'Жариялау үшін кіріңіз',
         AppLang.en: 'Sign in to publish',
       });
+
+  // ─── Entry quiz (lead capture) ──────────────────────────────────
+  String get quizCtaEntry => _pick({
+        AppLang.ru: 'Подобрать за минуту',
+        AppLang.kk: 'Бір минутта таңдау',
+        AppLang.en: 'Match me in a minute',
+      });
+  String get quizCtaSub => _pick({
+        AppLang.ru: 'Ответьте на пару вопросов — покажем подходящих специалистов.',
+        AppLang.kk: 'Бірнеше сұраққа жауап беріңіз — сәйкес мамандарды көрсетеміз.',
+        AppLang.en: 'Answer a few questions — we’ll show specialists who fit.',
+      });
+  String get quizTitle => _pick({
+        AppLang.ru: 'Подбор специалиста',
+        AppLang.kk: 'Маман таңдау',
+        AppLang.en: 'Find your specialist',
+      });
+  String get quizStepOf => _pick({
+        AppLang.ru: 'Шаг',
+        AppLang.kk: 'Қадам',
+        AppLang.en: 'Step',
+      });
+  String get quizNext => _pick({
+        AppLang.ru: 'Далее',
+        AppLang.kk: 'Әрі қарай',
+        AppLang.en: 'Next',
+      });
+  String get quizBack => _pick({
+        AppLang.ru: 'Назад',
+        AppLang.kk: 'Артқа',
+        AppLang.en: 'Back',
+      });
+  String get quizShowResults => _pick({
+        AppLang.ru: 'Показать подбор',
+        AppLang.kk: 'Таңдауды көрсету',
+        AppLang.en: 'Show matches',
+      });
+
+  // Q1 — for whom
+  String get quizQWho => _pick({
+        AppLang.ru: 'Для кого ищете поддержку?',
+        AppLang.kk: 'Кімге қолдау іздеп жүрсіз?',
+        AppLang.en: 'Who are you seeking support for?',
+      });
+  String get quizWhoSelf => _pick({
+        AppLang.ru: 'Для себя',
+        AppLang.kk: 'Өзіме',
+        AppLang.en: 'For myself',
+      });
+  String get quizWhoRelative => _pick({
+        AppLang.ru: 'Для близкого',
+        AppLang.kk: 'Жақыныма',
+        AppLang.en: 'For someone close',
+      });
+  String get quizWhoChild => _pick({
+        AppLang.ru: 'Для ребёнка или подростка',
+        AppLang.kk: 'Бала немесе жасөспірімге',
+        AppLang.en: 'For a child or teen',
+      });
+
+  // Q2 — topics
+  String get quizQTopics => _pick({
+        AppLang.ru: 'Что беспокоит больше всего?',
+        AppLang.kk: 'Сізді не қатты алаңдатады?',
+        AppLang.en: 'What troubles you most?',
+      });
+  String get quizQTopicsHint => _pick({
+        AppLang.ru: 'Можно выбрать несколько',
+        AppLang.kk: 'Бірнешеуін таңдауға болады',
+        AppLang.en: 'You can pick several',
+      });
+
+  // Q3 — severity
+  String get quizQSeverity => _pick({
+        AppLang.ru: 'Насколько это влияет на жизнь?',
+        AppLang.kk: 'Бұл өмірге қаншалықты әсер етеді?',
+        AppLang.en: 'How much does it affect your life?',
+      });
+  String get quizSevMild => _pick({
+        AppLang.ru: 'Терпимо, но хочу разобраться',
+        AppLang.kk: 'Шыдауға болады, бірақ түсінгім келеді',
+        AppLang.en: 'Manageable, but I want to understand it',
+      });
+  String get quizSevModerate => _pick({
+        AppLang.ru: 'Заметно мешает повседневной жизни',
+        AppLang.kk: 'Күнделікті өмірге айтарлықтай кедергі',
+        AppLang.en: 'It noticeably gets in the way',
+      });
+  String get quizSevSevere => _pick({
+        AppLang.ru: 'Очень тяжело, трудно справляться',
+        AppLang.kk: 'Өте ауыр, төтеп беру қиын',
+        AppLang.en: 'Very hard, I struggle to cope',
+      });
+  String get quizCrisisAsk => _pick({
+        AppLang.ru: 'Бывают мысли причинить себе вред?',
+        AppLang.kk: 'Өзіңізге зиян келтіру ойлары бола ма?',
+        AppLang.en: 'Do you have thoughts of harming yourself?',
+      });
+  String get quizCrisisYes => _pick({
+        AppLang.ru: 'Да, иногда',
+        AppLang.kk: 'Иә, кейде',
+        AppLang.en: 'Yes, sometimes',
+      });
+  String get quizCrisisNo => _pick({
+        AppLang.ru: 'Нет',
+        AppLang.kk: 'Жоқ',
+        AppLang.en: 'No',
+      });
+  String get quizCrisisTitle => _pick({
+        AppLang.ru: 'Вы не одни — это важно',
+        AppLang.kk: 'Сіз жалғыз емессіз — бұл маңызды',
+        AppLang.en: 'You’re not alone — this matters',
+      });
+  String get quizCrisisBody => _pick({
+        AppLang.ru:
+            'Если есть мысли причинить себе вред — пожалуйста, обратитесь за помощью прямо сейчас:\n\n• 112 — единая служба экстренного вызова\n• 150 — бесплатный телефон доверия\n\nNuva не заменяет экстренную помощь, но мы рядом.',
+        AppLang.kk:
+            'Егер өзіңізге зиян келтіру ойлары болса — қазір көмекке жүгініңіз:\n\n• 112 — бірыңғай шұғыл қызмет\n• 150 — тегін сенім телефоны\n\nNuva шұғыл көмекті алмастырмайды, бірақ біз жаныңыздамыз.',
+        AppLang.en:
+            'If you have thoughts of harming yourself, please reach out right now:\n\n• 112 — emergency services\n• 150 — free helpline\n\nNuva is not a substitute for emergency help, but we’re here.',
+      });
+
+  // Q4 — goal
+  String get quizQGoal => _pick({
+        AppLang.ru: 'Какого результата хотите?',
+        AppLang.kk: 'Қандай нәтиже күтесіз?',
+        AppLang.en: 'What result do you want?',
+      });
+  String get quizGoalUnderstand => _pick({
+        AppLang.ru: 'Понять себя',
+        AppLang.kk: 'Өзімді түсіну',
+        AppLang.en: 'Understand myself',
+      });
+  String get quizGoalCope => _pick({
+        AppLang.ru: 'Справиться с состоянием',
+        AppLang.kk: 'Жағдаймен күресу',
+        AppLang.en: 'Cope with how I feel',
+      });
+  String get quizGoalRelations => _pick({
+        AppLang.ru: 'Наладить отношения',
+        AppLang.kk: 'Қарым-қатынасты жөнге салу',
+        AppLang.en: 'Improve relationships',
+      });
+  String get quizGoalDecision => _pick({
+        AppLang.ru: 'Принять решение',
+        AppLang.kk: 'Шешім қабылдау',
+        AppLang.en: 'Make a decision',
+      });
+
+  // Q5 — format + language
+  String get quizQFormat => _pick({
+        AppLang.ru: 'Удобный формат и язык',
+        AppLang.kk: 'Ыңғайлы формат пен тіл',
+        AppLang.en: 'Format and language',
+      });
+  String get quizFormatOnline => _pick({
+        AppLang.ru: 'Онлайн',
+        AppLang.kk: 'Онлайн',
+        AppLang.en: 'Online',
+      });
+  String get quizFormatOffline => _pick({
+        AppLang.ru: 'Очно',
+        AppLang.kk: 'Жеке кездесу',
+        AppLang.en: 'In person',
+      });
+  String get quizLangLabel => _pick({
+        AppLang.ru: 'Язык общения',
+        AppLang.kk: 'Сөйлесу тілі',
+        AppLang.en: 'Language',
+      });
+
+  // Q6 — urgency + budget
+  String get quizQUrgency => _pick({
+        AppLang.ru: 'Когда хотите начать?',
+        AppLang.kk: 'Қашан бастағыңыз келеді?',
+        AppLang.en: 'When do you want to start?',
+      });
+  String get quizUrgWeek => _pick({
+        AppLang.ru: 'На этой неделе',
+        AppLang.kk: 'Осы аптада',
+        AppLang.en: 'This week',
+      });
+  String get quizUrgMonth => _pick({
+        AppLang.ru: 'В этом месяце',
+        AppLang.kk: 'Осы айда',
+        AppLang.en: 'This month',
+      });
+  String get quizUrgExploring => _pick({
+        AppLang.ru: 'Пока просто изучаю',
+        AppLang.kk: 'Әзірге тек қарап жүрмін',
+        AppLang.en: 'Just exploring',
+      });
+  String get quizQBudget => _pick({
+        AppLang.ru: 'Комфортный бюджет за сессию',
+        AppLang.kk: 'Сессияға ыңғайлы бюджет',
+        AppLang.en: 'Comfortable budget per session',
+      });
+  String get quizBudgetEco => _pick({
+        AppLang.ru: 'Эконом',
+        AppLang.kk: 'Үнемді',
+        AppLang.en: 'Budget',
+      });
+  String get quizBudgetMid => _pick({
+        AppLang.ru: 'Средний',
+        AppLang.kk: 'Орташа',
+        AppLang.en: 'Mid',
+      });
+  String get quizBudgetPremium => _pick({
+        AppLang.ru: 'Премиум',
+        AppLang.kk: 'Премиум',
+        AppLang.en: 'Premium',
+      });
+  String get quizBudgetAny => _pick({
+        AppLang.ru: 'Не важно',
+        AppLang.kk: 'Маңызды емес',
+        AppLang.en: 'Doesn’t matter',
+      });
+
+  // Q7 — contact + consent
+  String get quizQContact => _pick({
+        AppLang.ru: 'Куда прислать подбор?',
+        AppLang.kk: 'Таңдауды қайда жіберейік?',
+        AppLang.en: 'Where should we send your matches?',
+      });
+  String get quizContactHint => _pick({
+        AppLang.ru: 'Телефон, email или @username',
+        AppLang.kk: 'Телефон, email немесе @username',
+        AppLang.en: 'Phone, email or @username',
+      });
+  String get quizContactInvalid => _pick({
+        AppLang.ru: 'Введите телефон, email или @username',
+        AppLang.kk: 'Телефон, email немесе @username енгізіңіз',
+        AppLang.en: 'Enter a phone, email or @username',
+      });
+  String get quizConsent => _pick({
+        AppLang.ru:
+            'Согласен(на) на обработку моих ответов для подбора специалиста (особая категория данных, №94-V).',
+        AppLang.kk:
+            'Маман таңдау үшін жауаптарымды өңдеуге келісемін (ерекше санаттағы деректер, №94-V).',
+        AppLang.en:
+            'I consent to processing my answers to match a specialist (special-category data, №94-V).',
+      });
+  String get quizConsentRequired => _pick({
+        AppLang.ru: 'Без согласия продолжить нельзя',
+        AppLang.kk: 'Келісімсіз жалғастыру мүмкін емес',
+        AppLang.en: 'Consent is required to continue',
+      });
+
+  // Result
+  String get quizResultTitle => _pick({
+        AppLang.ru: 'Мы подобрали для вас',
+        AppLang.kk: 'Сізге таңдадық',
+        AppLang.en: 'We found a match for you',
+      });
+  String get quizResultSub => _pick({
+        AppLang.ru: 'Создайте аккаунт, чтобы написать и записаться.',
+        AppLang.kk: 'Жазылу үшін аккаунт жасаңыз.',
+        AppLang.en: 'Create an account to message and book.',
+      });
+  String get quizResultCta => _pick({
+        AppLang.ru: 'Создать аккаунт и записаться',
+        AppLang.kk: 'Аккаунт жасап, жазылу',
+        AppLang.en: 'Create account & book',
+      });
+  String get quizResultEmpty => _pick({
+        AppLang.ru: 'Пока не нашли точного совпадения — посмотрите весь каталог.',
+        AppLang.kk: 'Дәл сәйкестік табылмады — толық каталогты қараңыз.',
+        AppLang.en: 'No exact match yet — browse the full catalog.',
+      });
+  String get quizPrivacyNote => _pick({
+        AppLang.ru: 'Ответы анонимны до регистрации и используются только для подбора.',
+        AppLang.kk: 'Жауаптар тіркелгенге дейін анонимді және тек таңдау үшін қолданылады.',
+        AppLang.en: 'Answers stay anonymous until you register and are used only for matching.',
+      });
 }
