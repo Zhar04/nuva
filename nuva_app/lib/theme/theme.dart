@@ -76,5 +76,9 @@ class NuvaThemeExt extends ThemeExtension<NuvaThemeExt> {
 }
 
 extension NuvaContext on BuildContext {
-  NuvaTokens get nuva => Theme.of(this).extension<NuvaThemeExt>()!.tokens;
+  /// Theme tokens. Falls back to the light token set if the theme extension is
+  /// somehow missing (e.g. a context above MaterialApp) instead of hard-asserting
+  /// with `!` — a missing extension must never white-screen the app.
+  NuvaTokens get nuva =>
+      Theme.of(this).extension<NuvaThemeExt>()?.tokens ?? NuvaTokens.light();
 }

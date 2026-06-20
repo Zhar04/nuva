@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/booking.dart';
 import '../models/chat.dart';
@@ -7,20 +6,7 @@ import '../models/community.dart';
 import '../models/gamification.dart';
 import '../models/specialist.dart';
 import 'api_client.dart';
-import 'auth_service.dart';
 import 'backend_auth.dart' show apiClientProvider, backendAuthProvider;
-import 'db_service.dart';
-
-/// Shared service singletons.
-final dbProvider = Provider<DbService>((_) => DbService());
-final authServiceProvider = Provider<AuthService>((_) => AuthService());
-
-/// Emits whenever the Supabase auth session changes (sign-in / sign-out /
-/// anonymous). Null when the backend is not configured.
-final authStateProvider = StreamProvider<AuthState?>((ref) {
-  final stream = ref.watch(authServiceProvider).authStateChanges;
-  return stream ?? Stream<AuthState?>.value(null);
-});
 
 /// Specialists — from the Django backend (`/api/v1/specialists`), falling back
 /// to the bundled mock catalog when the backend is unreachable. Non-empty list.

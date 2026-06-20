@@ -133,7 +133,6 @@ class ProfileScreen extends ConsumerWidget {
                 child: TextButton(
                   onPressed: () async {
                     await ref.read(backendAuthProvider.notifier).logout();
-                    await ref.read(authServiceProvider).signOut();
                     if (context.mounted) context.go('/auth');
                   },
                   child: Text(

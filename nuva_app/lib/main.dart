@@ -7,8 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'l10n/strings.dart';
 import 'router/app_router.dart';
-import 'services/auth_service.dart';
-import 'services/backend.dart';
 import 'services/observability.dart';
 import 'theme/theme.dart';
 
@@ -27,14 +25,6 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   await Observability.guard(() async {
-    try {
-      await Backend.init();
-      // Best-effort: attach an anonymous identity so RLS-protected writes work.
-      // No-ops if the backend is off or anonymous sign-ins are disabled.
-      await AuthService().ensureSession();
-    } catch (e, s) {
-      await Observability.report(e, s);
-    }
     // One shared container so the router's redirect/refreshListenable read the
     // same auth state the widget tree does (the router is built before the
     // ProviderScope, so it can't use a WidgetRef).
