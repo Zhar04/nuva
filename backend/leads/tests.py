@@ -74,6 +74,14 @@ class LeadCreateTests(APITestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("contact", res.data)
 
+    def test_empty_payload_rejected(self):
+        # A bare {} must not bypass the contact + consent gate via model
+        # defaults — both are validation errors, not a silent 201.
+        res = self.client.post("/api/v1/leads/", {}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("contact", res.data)
+        self.assertIn("consent", res.data)
+
     def test_consent_is_required(self):
         res = self.client.post(
             "/api/v1/leads/", self._payload(consent=False), format="json"

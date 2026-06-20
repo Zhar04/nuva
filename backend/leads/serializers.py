@@ -20,6 +20,11 @@ class LeadCreateSerializer(serializers.ModelSerializer):
     """Write serializer for the entry quiz. Validates the (required) contact and
     the consent flag; everything else is short, capped text the model stores."""
 
+    # Model defaults make these optional to DRF; force them required so a bare
+    # payload can't bypass the contact + consent gate (consent matters — №94-V).
+    contact = serializers.CharField(required=True, allow_blank=False)
+    consent = serializers.BooleanField(required=True)
+
     class Meta:
         model = Lead
         fields = (
