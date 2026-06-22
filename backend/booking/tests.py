@@ -76,6 +76,26 @@ class InstantMatchTests(APITestCase):
         res = self.client.post("/api/v1/bookings/instant", {}, format="json")
         self.assertFalse(res.data["available"])
 
+    def test_match_takes_specialist_out_of_the_pool(self):
+        # Review fix: a matched specialist must not be handed to the next client
+        # too — the match takes them out of the instant pool.
+        _specialist()
+        first = self.client.post("/api/v1/bookings/instant", {}, format="json")
+        self.assertTrue(first.data["available"])
+        other = User.objects.create_user(email="b@nuva.kz", password="Test12345")
+        c2 = APIClient()
+        c2.force_authenticate(other)
+        second = c2.post("/api/v1/bookings/instant", {}, format="json")
+        self.assertFalse(second.data["available"])
+
+    def test_match_honors_requested_channel(self):
+        # Review fix: the match path used to hardcode video, ignoring intent.
+        _specialist()
+        res = self.client.post(
+            "/api/v1/bookings/instant", {"channel": "chat"}, format="json"
+        )
+        self.assertEqual(res.data["booking"]["format"], "chat")
+
 
 class InstantRequestTests(APITestCase):
     def setUp(self):
@@ -103,6 +123,23 @@ class InstantRequestTests(APITestCase):
         self.assertEqual(res.data["status"], "waiting")
         self.assertEqual(res.data["channel"], "chat")
         self.assertEqual(res.data["respond_within_min"], 15)
+
+    def test_duplicate_request_reuses_existing_waiting_one(self):
+        # Review fix: repeated taps must not flood the queue with duplicates.
+        c, first = self._make_request(self.user)
+        again = c.post(
+            "/api/v1/bookings/instant/request",
+            {"concern": "Сон", "channel": "chat"},
+            format="json",
+        )
+        self.assertEqual(again.status_code, 200)
+        self.assertEqual(again.data["id"], first.data["id"])
+        self.assertEqual(
+            InstantRequest.objects.filter(
+                user=self.user, status="waiting"
+            ).count(),
+            1,
+        )
 
     def test_owner_can_poll_but_others_cannot(self):
         _, res = self._make_request(self.user)

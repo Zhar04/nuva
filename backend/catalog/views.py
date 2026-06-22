@@ -49,6 +49,20 @@ class SpecialistMeView(APIView):
         ser = SpecialistMeSerializer(sp, data=request.data, partial=not creating)
         ser.is_valid(raise_exception=True)
         sp = ser.save(owner=request.user)
+        # "Доступен сейчас" window is server-controlled (instant_until is
+        # read-only on the serializer): turning the toggle on opens a 1-hour
+        # window so the status auto-expires; turning it off clears the window.
+        if "accepts_instant" in ser.validated_data:
+            from datetime import timedelta
+
+            from django.utils import timezone
+
+            sp.instant_until = (
+                timezone.now() + timedelta(hours=1)
+                if sp.accepts_instant
+                else None
+            )
+            sp.save(update_fields=["instant_until"])
         # Activate on first creation; afterwards respect the psychologist's own
         # "приём открыт/закрыт" toggle (is_active) sent from the schedule screen.
         if creating and not sp.is_active:

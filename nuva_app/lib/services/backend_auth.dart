@@ -115,9 +115,19 @@ class BackendAuth extends StateNotifier<AuthState> {
   String? get accessToken => _access;
 
   Future<void> _restore() async {
-    final (access, refresh) = await _tokens.read();
-    _access = access;
-    _refresh = refresh;
+    // A secure-store read can throw (web PWA with a missing/corrupt entry, or
+    // Android Keystore corruption). The token read must never escape _restore —
+    // otherwise AuthState stays at restoring:true and the app hangs on /splash
+    // (the white-screen-on-launch class). Fall through to a clean signed-out
+    // state on any failure.
+    try {
+      final (access, refresh) = await _tokens.read();
+      _access = access;
+      _refresh = refresh;
+    } catch (_) {
+      _access = null;
+      _refresh = null;
+    }
     if (_access != null) {
       if (await _loadMe()) return;
       // /auth/me failed. If it was the backend rejecting us (401 etc.), the

@@ -20,6 +20,8 @@ void main() {
         '/legal/privacy',
         '/legal/terms',
         '/legal/about',
+        // The entry quiz is reachable by a guest before sign-up.
+        '/quiz',
       ]) {
         expect(isPublicRoute(r), isTrue, reason: '$r should be public');
       }
@@ -39,6 +41,8 @@ void main() {
         '/psy/cabinet',
         '/psy/client/3',
         '/profile',
+        // "Поговорить сейчас" creates a booking — must require sign-in.
+        '/instant',
       ]) {
         expect(isPublicRoute(r), isFalse, reason: '$r should be gated');
       }

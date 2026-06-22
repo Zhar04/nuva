@@ -56,6 +56,10 @@ class SpecialistMeSerializer(serializers.ModelSerializer):
             "accepts_instant", "instant_until",
             "education",
         )
+        # instant_until is the safety window for "Доступен сейчас": the server
+        # sets it (now + 1h) when accepts_instant is turned on, so a client can't
+        # pin itself available forever — see SpecialistMeView.put.
+        read_only_fields = ("instant_until",)
 
     def _sync_education(self, specialist, rows):
         specialist.education.all().delete()

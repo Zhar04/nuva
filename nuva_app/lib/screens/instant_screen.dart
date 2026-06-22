@@ -62,6 +62,7 @@ class _InstantScreenState extends ConsumerState<InstantScreen> {
         {'concern': widget.concern},
         token: _token,
       );
+      if (!mounted) return;
       if ((res['available'] as bool?) == true) {
         ref.invalidate(bookingsProvider);
         setState(() {
@@ -76,6 +77,7 @@ class _InstantScreenState extends ConsumerState<InstantScreen> {
       }
     } catch (_) {
       // Offline / backend unreachable — degrade, never crash.
+      if (!mounted) return;
       setState(() => _phase = _Phase.offline);
     }
   }
@@ -90,9 +92,11 @@ class _InstantScreenState extends ConsumerState<InstantScreen> {
       );
       _requestId = (res['id'] as num?)?.toInt();
       _respondWithin = (res['respond_within_min'] as num?)?.toInt() ?? 15;
+      if (!mounted) return;
       setState(() => _phase = _Phase.waiting);
       _startPolling();
     } catch (_) {
+      if (!mounted) return;
       setState(() => _phase = _Phase.offline);
     }
   }
@@ -107,6 +111,7 @@ class _InstantScreenState extends ConsumerState<InstantScreen> {
     if (id == null) return;
     try {
       final res = await _api.get('bookings/instant/request/$id', token: _token);
+      if (!mounted) return;
       final status = (res['status'] ?? '') as String;
       if (status == 'claimed' && res['booking'] != null) {
         _poll?.cancel();
@@ -618,7 +623,7 @@ class _OfflineView extends ConsumerWidget {
           const SizedBox(height: 10),
           TextButton(
             onPressed: onRetry,
-            child: Text('Повторить', style: TextStyle(color: t.blue)),
+            child: Text(s.instantRetry, style: TextStyle(color: t.blue)),
           ),
           const Spacer(flex: 2),
         ],

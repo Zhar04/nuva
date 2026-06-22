@@ -307,16 +307,14 @@ class PsyActions {
     ref.invalidate(clientCardProvider(clientId));
   }
 
-  /// Toggle "Доступен сейчас" for the instant funnel. When turning on, set a
-  /// 1-hour window so the status auto-expires if the psychologist forgets it.
-  /// Partial PUT on /specialists/me leaves the rest of the profile untouched.
+  /// Toggle "Доступен сейчас" for the instant funnel. The 1-hour auto-expiry
+  /// window (instant_until) is set server-side — the client only flips the
+  /// boolean, so it can't pin itself available forever. Partial PUT on
+  /// /specialists/me leaves the rest of the profile untouched.
   Future<void> setInstantAvailable(bool on) async {
-    final until = on
-        ? DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String()
-        : null;
     await _api.put(
       'specialists/me',
-      {'accepts_instant': on, 'instant_until': until},
+      {'accepts_instant': on},
       token: _token,
     );
     ref.invalidate(specialistMeProvider);

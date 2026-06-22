@@ -1037,6 +1037,11 @@ class S {
         AppLang.kk: 'Сервермен байланыс жоқ',
         AppLang.en: 'No connection to the server',
       });
+  String get instantRetry => _pick({
+        AppLang.ru: 'Повторить',
+        AppLang.kk: 'Қайталау',
+        AppLang.en: 'Retry',
+      });
   String get instantOfflineBody => _pick({
         AppLang.ru: 'Мгновенный подбор недоступен офлайн. Если нужна срочная помощь — позвоните на линию доверия 150.',
         AppLang.kk: 'Жедел таңдау офлайн қолжетімсіз. Шұғыл көмек қажет болса — 150 сенім желісіне қоңырау шалыңыз.',

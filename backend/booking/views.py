@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions
@@ -260,17 +261,30 @@ class ClientCardView(APIView):
 # ─── "Поговорить сейчас" funnel ───────────────────────────────────────
 
 
-def _pick_instant_specialist():
+def _instant_channel(request):
+    """The session channel the client asked for, defaulting to video."""
+    channel = request.data.get("channel") or Booking.Format.VIDEO
+    return channel if channel in Booking.Format.values else Booking.Format.VIDEO
+
+
+def _pick_instant_specialist(lock=False):
     """The best specialist who can take a live session right now (highest
-    rating wins). Returns None when nobody is available."""
+    rating wins). Returns None when nobody is available.
+
+    The availability window is filtered in SQL (no app-side loop), mirroring
+    Specialist.is_instant_available() (which SpecialistListSerializer also uses).
+    Pass lock=True inside a transaction to select_for_update the matched row so a
+    concurrent match can't grab the same specialist.
+    """
+    from django.db.models import Q
+
     now = timezone.now()
     qs = Specialist.objects.filter(
         is_active=True, is_verified=True, accepts_instant=True
-    ).order_by("-rating", "id")
-    for sp in qs:
-        if sp.instant_until is None or sp.instant_until > now:
-            return sp
-    return None
+    ).filter(Q(instant_until__isnull=True) | Q(instant_until__gt=now))
+    if lock:
+        qs = qs.select_for_update()
+    return qs.order_by("-rating", "id").first()
 
 
 class InstantMatchView(APIView):
@@ -283,15 +297,24 @@ class InstantMatchView(APIView):
 
     def post(self, request):
         concern = (request.data.get("concern") or "").strip()
-        sp = _pick_instant_specialist()
-        if sp is None:
-            return Response(
-                {"available": False,
-                 "respond_within_min": settings.INSTANT_RESPOND_MIN}
+        channel = _instant_channel(request)
+        # Lock + take the specialist so two concurrent matches can't both grab
+        # the same person and double-book them into overlapping live sessions.
+        with transaction.atomic():
+            sp = _pick_instant_specialist(lock=True)
+            if sp is None:
+                return Response(
+                    {"available": False,
+                     "respond_within_min": settings.INSTANT_RESPOND_MIN}
+                )
+            # Take them out of the instant pool for this session; they re-open
+            # availability with the cabinet toggle when free again.
+            sp.accepts_instant = False
+            sp.instant_until = None
+            sp.save(update_fields=["accepts_instant", "instant_until"])
+            booking = _create_promo_booking(
+                request.user, sp, channel=channel, concern=concern
             )
-        booking = _create_promo_booking(
-            request.user, sp, channel="video", concern=concern
-        )
         return Response(
             {"available": True, "booking": BookingSerializer(booking).data},
             status=201,
@@ -305,13 +328,19 @@ class InstantRequestCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        channel = request.data.get("channel") or Booking.Format.VIDEO
-        if channel not in Booking.Format.values:
-            channel = Booking.Format.VIDEO
+        # One open request per client: reuse the existing WAITING one instead of
+        # flooding the psychologist queue with duplicates on repeated taps.
+        existing = InstantRequest.objects.filter(
+            user=request.user, status=InstantRequest.Status.WAITING
+        ).first()
+        if existing is not None:
+            return Response(
+                InstantRequestSerializer(existing).data, status=200
+            )
         req = InstantRequest.objects.create(
             user=request.user,
             concern=(request.data.get("concern") or "").strip()[:80],
-            channel=channel,
+            channel=_instant_channel(request),
             respond_within_min=settings.INSTANT_RESPOND_MIN,
         )
         return Response(InstantRequestSerializer(req).data, status=201)
@@ -370,17 +399,24 @@ class InstantRequestClaimView(APIView):
                 {"detail": "Только проверенный психолог может принять заявку."},
                 status=403,
             )
-        req = get_object_or_404(InstantRequest, pk=pk)
-        if req.status != InstantRequest.Status.WAITING:
-            return Response(
-                {"detail": "Заявка уже занята или закрыта."}, status=409
+        # Lock the row so two psychologists can't both pass the WAITING check
+        # and both spawn a promo booking for the one client (claim TOCTOU).
+        with transaction.atomic():
+            req = get_object_or_404(
+                InstantRequest.objects.select_for_update(), pk=pk
             )
-        booking = _create_promo_booking(
-            req.user, sp, channel=req.channel, concern=req.concern
-        )
-        req.status = InstantRequest.Status.CLAIMED
-        req.specialist = sp
-        req.booking = booking
-        req.claimed_at = timezone.now()
-        req.save(update_fields=["status", "specialist", "booking", "claimed_at"])
+            if req.status != InstantRequest.Status.WAITING:
+                return Response(
+                    {"detail": "Заявка уже занята или закрыта."}, status=409
+                )
+            booking = _create_promo_booking(
+                req.user, sp, channel=req.channel, concern=req.concern
+            )
+            req.status = InstantRequest.Status.CLAIMED
+            req.specialist = sp
+            req.booking = booking
+            req.claimed_at = timezone.now()
+            req.save(
+                update_fields=["status", "specialist", "booking", "claimed_at"]
+            )
         return Response(InstantRequestSerializer(req).data)
