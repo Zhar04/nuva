@@ -90,9 +90,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         // to the auth state change and honors any ?next= intended route).
       }
     } on ApiException catch (e) {
+      // The server answered with an error (e.g. 400 "email уже занят") — show
+      // its real message, not a misleading "no connection".
       _snack(e.message, error: true);
-    } catch (_) {
-      _snack('Нет связи с сервером. Бэкенд запущен?', error: true);
+    } on NetworkException {
+      _snack('Нет связи с сервером. Проверьте интернет.', error: true);
+    } catch (e) {
+      // Should be unreachable, but never swallow into a wrong message: if it's
+      // actually an ApiException that slipped the type check (web/minify),
+      // surface its message anyway.
+      _snack(e is ApiException ? e.message : 'Не удалось выполнить запрос.',
+          error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

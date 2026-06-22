@@ -5,27 +5,46 @@ import 'package:http/http.dart' as http;
 
 /// Thin HTTP client for the Nuva Django backend (`/api/v1/...`).
 class ApiClient {
-  ApiClient({String? baseUrl})
+  ApiClient({String? baseUrl, http.Client? httpClient})
       : baseUrl = (baseUrl ??
                 dotenv.env['API_BASE_URL'] ??
                 'http://localhost:8000')
-            .replaceAll(RegExp(r'/+$'), '');
+            .replaceAll(RegExp(r'/+$'), ''),
+        _http = httpClient ?? http.Client();
 
   final String baseUrl;
+  final http.Client _http;
 
   Uri _u(String path) => Uri.parse('$baseUrl/api/v1/$path');
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body,
-          {String? token}) async =>
-      _decode(await http.post(_u(path),
+          {String? token}) =>
+      _send(() => _http.post(_u(path),
           headers: _headers(token), body: jsonEncode(body)));
 
-  Future<Map<String, dynamic>> get(String path, {String? token}) async =>
-      _decode(await http.get(_u(path), headers: _headers(token)));
+  Future<Map<String, dynamic>> get(String path, {String? token}) =>
+      _send(() => _http.get(_u(path), headers: _headers(token)));
+
+  /// Run an HTTP call and decode it. A transport failure (the request never got
+  /// an HTTP response — DNS, TLS, CORS, offline) is wrapped as a
+  /// [NetworkException] so callers can tell "no connection" apart from a real
+  /// HTTP error like 400. An [ApiException] (a non-2xx response) passes through.
+  Future<Map<String, dynamic>> _send(
+      Future<http.Response> Function() call) async {
+    final http.Response res;
+    try {
+      res = await call();
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw NetworkException(e);
+    }
+    return _decode(res);
+  }
 
   /// GET that returns a JSON list (or the `results` of a paginated response).
   Future<List<dynamic>> getList(String path, {String? token}) async {
-    final res = await http.get(_u(path), headers: _headers(token));
+    final res = await _http.get(_u(path), headers: _headers(token));
     final ok = res.statusCode >= 200 && res.statusCode < 300;
     final decoded =
         res.body.isEmpty ? const [] : jsonDecode(utf8.decode(res.bodyBytes));
@@ -41,17 +60,17 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> patch(String path, Map<String, dynamic> body,
-          {String? token}) async =>
-      _decode(await http.patch(_u(path),
+          {String? token}) =>
+      _send(() => _http.patch(_u(path),
           headers: _headers(token), body: jsonEncode(body)));
 
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body,
-          {String? token}) async =>
-      _decode(await http.put(_u(path),
+          {String? token}) =>
+      _send(() => _http.put(_u(path),
           headers: _headers(token), body: jsonEncode(body)));
 
   Future<void> delete(String path, {String? token}) async {
-    final res = await http.delete(_u(path), headers: _headers(token));
+    final res = await _http.delete(_u(path), headers: _headers(token));
     if (res.statusCode >= 400) {
       throw ApiException(res.statusCode, const {});
     }
@@ -95,4 +114,14 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($status): $message';
+}
+
+/// The request never reached an HTTP response (offline, DNS/TLS, or a CORS
+/// block on web). Distinct from [ApiException], which carries a real status.
+class NetworkException implements Exception {
+  NetworkException(this.cause);
+  final Object cause;
+
+  @override
+  String toString() => 'NetworkException: $cause';
 }
