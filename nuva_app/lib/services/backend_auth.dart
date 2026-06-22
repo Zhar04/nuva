@@ -39,18 +39,30 @@ class _TokenStore {
     return (access, refresh);
   }
 
+  /// Persist the tokens. Best-effort: a secure-store write can throw on web
+  /// (e.g. a broken service worker / WebCrypto hiccup), but the live session
+  /// already holds the tokens in memory — failing to *remember* them across
+  /// restarts must NEVER fail the sign-in that just succeeded. Swallow + report.
   Future<void> write(String? access, String? refresh) async {
-    if (access != null) await _secure.write(key: _kAccess, value: access);
-    if (refresh != null) await _secure.write(key: _kRefresh, value: refresh);
+    try {
+      if (access != null) await _secure.write(key: _kAccess, value: access);
+      if (refresh != null) await _secure.write(key: _kRefresh, value: refresh);
+    } catch (_) {
+      // Session stays valid for this run; it just won't be restored next launch.
+    }
   }
 
   Future<void> clear() async {
-    await _secure.delete(key: _kAccess);
-    await _secure.delete(key: _kRefresh);
-    // Belt-and-braces: also clear any lingering legacy plaintext copy.
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kAccess);
-    await prefs.remove(_kRefresh);
+    try {
+      await _secure.delete(key: _kAccess);
+      await _secure.delete(key: _kRefresh);
+      // Belt-and-braces: also clear any lingering legacy plaintext copy.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kAccess);
+      await prefs.remove(_kRefresh);
+    } catch (_) {
+      // Logout already cleared in-memory tokens; storage cleanup is best-effort.
+    }
   }
 }
 

@@ -84,6 +84,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   String _friendlyAuthError(ApiException e) => friendlyAuthMessage(e, S.of(ref));
 
+  bool _isEmailTaken(ApiException e) {
+    final email = e.body['email'];
+    final text = (email is List && email.isNotEmpty)
+        ? email.first.toString()
+        : email?.toString() ?? '';
+    final low = text.toLowerCase();
+    return low.contains('существ') ||
+        low.contains('exist') ||
+        low.contains('unique');
+  }
+
   Future<void> _submit() async {
     final email = _email.text.trim();
     final password = _password.text;
@@ -133,6 +144,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       // taken). Map the common cases to friendly, localized copy; otherwise
       // fall back to the server's own message — never "no connection".
       _snack(_friendlyAuthError(e), error: true);
+      // If the email is already registered while we're in register mode, flip to
+      // login so the user can sign in instead of being stuck on "уже существует".
+      if (_register && _isEmailTaken(e) && mounted) {
+        setState(() => _register = false);
+      }
     } on NetworkException {
       _snack('Нет связи с сервером. Проверьте интернет.', error: true);
     } catch (e) {
