@@ -1,7 +1,58 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
+
+/// JWT session storage backed by the OS secure store (Keychain / Keystore;
+/// WebCrypto-wrapped on web) instead of plaintext shared_preferences. The
+/// tokens are special-category-adjacent credentials, so they must not sit in
+/// the clear (privacy-policy gap H2/H3 in TECHNICAL_LETTER.md).
+///
+/// One-time migration: older builds persisted the tokens in shared_preferences;
+/// on first read we lift any legacy values into secure storage and wipe the
+/// plaintext copy, so existing sessions survive the upgrade without a re-login.
+class _TokenStore {
+  static const _kAccess = 'nuva_access';
+  static const _kRefresh = 'nuva_refresh';
+
+  final _secure = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
+  Future<(String?, String?)> read() async {
+    var access = await _secure.read(key: _kAccess);
+    var refresh = await _secure.read(key: _kRefresh);
+    if (access == null && refresh == null) {
+      // Migrate a legacy plaintext session, if any, then scrub it.
+      final prefs = await SharedPreferences.getInstance();
+      final legacyA = prefs.getString(_kAccess);
+      final legacyR = prefs.getString(_kRefresh);
+      if (legacyA != null || legacyR != null) {
+        access = legacyA;
+        refresh = legacyR;
+        await write(access, refresh);
+        await prefs.remove(_kAccess);
+        await prefs.remove(_kRefresh);
+      }
+    }
+    return (access, refresh);
+  }
+
+  Future<void> write(String? access, String? refresh) async {
+    if (access != null) await _secure.write(key: _kAccess, value: access);
+    if (refresh != null) await _secure.write(key: _kRefresh, value: refresh);
+  }
+
+  Future<void> clear() async {
+    await _secure.delete(key: _kAccess);
+    await _secure.delete(key: _kRefresh);
+    // Belt-and-braces: also clear any lingering legacy plaintext copy.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kAccess);
+    await prefs.remove(_kRefresh);
+  }
+}
 
 /// User as returned by the backend `/auth/me`.
 class BackendUser {
@@ -49,25 +100,24 @@ class AuthState {
   bool get isSignedIn => user != null;
 }
 
-/// Holds JWT tokens (shared_preferences) + the signed-in user, and talks to the
-/// backend auth endpoints. Restores the session on startup.
+/// Holds JWT tokens (in the OS secure store) + the signed-in user, and talks to
+/// the backend auth endpoints. Restores the session on startup.
 class BackendAuth extends StateNotifier<AuthState> {
   BackendAuth(this._api) : super(const AuthState(restoring: true)) {
     _restore();
   }
 
   final ApiClient _api;
-  static const _kAccess = 'nuva_access';
-  static const _kRefresh = 'nuva_refresh';
+  final _tokens = _TokenStore();
   String? _access;
   String? _refresh;
 
   String? get accessToken => _access;
 
   Future<void> _restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    _access = prefs.getString(_kAccess);
-    _refresh = prefs.getString(_kRefresh);
+    final (access, refresh) = await _tokens.read();
+    _access = access;
+    _refresh = refresh;
     if (_access != null) {
       if (await _loadMe()) return;
       // /auth/me failed. If it was the backend rejecting us (401 etc.), the
@@ -178,17 +228,13 @@ class BackendAuth extends StateNotifier<AuthState> {
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_access != null) await prefs.setString(_kAccess, _access!);
-    if (_refresh != null) await prefs.setString(_kRefresh, _refresh!);
+    await _tokens.write(_access, _refresh);
   }
 
   Future<void> _clear() async {
     _access = null;
     _refresh = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kAccess);
-    await prefs.remove(_kRefresh);
+    await _tokens.clear();
   }
 }
 

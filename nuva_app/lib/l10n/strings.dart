@@ -1054,4 +1054,16 @@ class S {
         AppLang.kk: '«Қазір сөйлесу» жедел сессияларын қабылдау (1 сағатқа)',
         AppLang.en: 'Accept instant “Talk now” sessions (for 1 hour)',
       });
+
+  // ─── Legal screens ──────────────────────────────────────────────
+  /// Honest banner shown above every legal document: this is a draft, the
+  /// authoritative version is RU and finalized by a lawyer before launch.
+  String get legalDraftNotice => _pick({
+        AppLang.ru: 'Черновик. Текст готовится к проверке юристом и может измениться. '
+            'Юридически значимая версия — на русском языке.',
+        AppLang.kk: 'Жоба. Мәтін заңгердің тексеруіне дайындалуда және өзгеруі мүмкін. '
+            'Заңды күші бар нұсқа — орыс тілінде.',
+        AppLang.en: 'Draft. This text is being prepared for legal review and may change. '
+            'The authoritative version is in Russian.',
+      });
 }

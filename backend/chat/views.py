@@ -1,3 +1,11 @@
+"""Chat endpoints.
+
+Privacy invariant (№94-V — special-category data): message text is
+special-category-adjacent. Never write message bodies to an open log
+(no print / logger.info of `Message.text`). The same rule holds for journal
+moods and lead answers elsewhere — keep content out of logs.
+"""
+
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers
