@@ -70,6 +70,30 @@ class Specialist(models.Model):
         return self.instant_until is None or self.instant_until > now
 
 
+class Favorite(models.Model):
+    """A seeker's saved specialist. One row per (user, specialist) pair."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="favorites",
+        on_delete=models.CASCADE,
+    )
+    specialist = models.ForeignKey(
+        Specialist, related_name="favorited_by", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "specialist"], name="uniq_user_favorite"
+            )
+        ]
+        verbose_name = "Избранное"
+        verbose_name_plural = "Избранное"
+
+
 class Education(models.Model):
     specialist = models.ForeignKey(
         Specialist, related_name="education", on_delete=models.CASCADE

@@ -34,9 +34,19 @@ class SpecialistListSerializer(serializers.ModelSerializer):
 class SpecialistDetailSerializer(SpecialistListSerializer):
     education = EducationSerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
+    is_favorite = serializers.SerializerMethodField()
 
     class Meta(SpecialistListSerializer.Meta):
-        fields = SpecialistListSerializer.Meta.fields + ("education", "reviews")
+        fields = SpecialistListSerializer.Meta.fields + (
+            "education", "reviews", "is_favorite",
+        )
+
+    def get_is_favorite(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return False
+        return obj.favorited_by.filter(user=user).exists()
 
 
 class SpecialistMeSerializer(serializers.ModelSerializer):

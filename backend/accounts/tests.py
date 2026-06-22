@@ -2,7 +2,12 @@
 /me access + update, and ProDocument ownership isolation."""
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.core import mail
 from django.core.cache import cache
+from django.test import override_settings
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient, APITestCase
 
 from .models import ProDocument
@@ -149,3 +154,70 @@ class ProDocumentOwnershipTests(APITestCase):
         res = self.client.delete(f"/api/v1/documents/{doc.id}/")
         self.assertEqual(res.status_code, 404)  # not in my queryset
         self.assertTrue(ProDocument.objects.filter(pk=doc.pk).exists())
+
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class PasswordResetTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            email="seeker@nuva.kz", password="OldPass12345"
+        )
+        self.client = APIClient()
+
+    def test_request_for_existing_email_sends_mail(self):
+        res = self.client.post(
+            "/api/v1/auth/password/reset",
+            {"email": "seeker@nuva.kz"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("uid=", mail.outbox[0].body)
+        self.assertIn("token=", mail.outbox[0].body)
+
+    def test_request_for_unknown_email_is_silent_no_enumeration(self):
+        res = self.client.post(
+            "/api/v1/auth/password/reset",
+            {"email": "nobody@nuva.kz"},
+            format="json",
+        )
+        # Same 200 + no mail — the response must not reveal the email is unknown.
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def _uid_token(self):
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+        return uid, token
+
+    def test_confirm_with_valid_token_sets_new_password(self):
+        uid, token = self._uid_token()
+        res = self.client.post(
+            "/api/v1/auth/password/reset/confirm",
+            {"uid": uid, "token": token, "password": "BrandNew!2026"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("BrandNew!2026"))
+
+    def test_confirm_with_bad_token_rejected(self):
+        uid, _ = self._uid_token()
+        res = self.client.post(
+            "/api/v1/auth/password/reset/confirm",
+            {"uid": uid, "token": "wrong-token", "password": "BrandNew!2026"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("OldPass12345"))  # unchanged
+
+    def test_confirm_rejects_weak_new_password(self):
+        uid, token = self._uid_token()
+        res = self.client.post(
+            "/api/v1/auth/password/reset/confirm",
+            {"uid": uid, "token": token, "password": "12345678"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)

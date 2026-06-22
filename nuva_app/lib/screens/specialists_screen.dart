@@ -251,6 +251,50 @@ class _SpecialistCard extends ConsumerWidget {
   }
 }
 
+/// Heart toggle on the specialist detail header. Optimistic: flips instantly,
+/// reverts on error. Needs a signed-in account (shows a hint otherwise).
+class _FavoriteButton extends ConsumerStatefulWidget {
+  final Specialist specialist;
+  const _FavoriteButton({required this.specialist});
+  @override
+  ConsumerState<_FavoriteButton> createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends ConsumerState<_FavoriteButton> {
+  bool? _fav;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.nuva;
+    final fav = _fav ?? widget.specialist.isFavorite;
+    return IconButton(
+      onPressed: () async {
+        final token = ref.read(backendAuthProvider.notifier).accessToken;
+        if (token == null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            backgroundColor: t.danger,
+            content: const Text('Войдите, чтобы добавить в избранное',
+                style: TextStyle(color: Colors.white)),
+          ));
+          return;
+        }
+        setState(() => _fav = !fav); // optimistic
+        try {
+          final now = await toggleFavorite(ref, widget.specialist.id);
+          if (mounted) setState(() => _fav = now);
+        } catch (_) {
+          if (mounted) setState(() => _fav = fav); // revert
+        }
+      },
+      icon: Icon(
+        fav ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+        color: fav ? t.danger : t.text,
+        size: 20,
+      ),
+    );
+  }
+}
+
 class SpecialistDetailScreen extends ConsumerWidget {
   final String id;
   const SpecialistDetailScreen({super.key, required this.id});
@@ -289,11 +333,7 @@ class SpecialistDetailScreen extends ConsumerWidget {
                           color: t.text, size: 18),
                     ),
                     const Spacer(),
-                    IconButton(
-                      onPressed: () {},
-                      icon: Icon(Icons.favorite_outline_rounded,
-                          color: t.text, size: 20),
-                    ),
+                    _FavoriteButton(specialist: sp),
                     IconButton(
                       onPressed: () => openSpecialistChat(context, ref, sp.id),
                       icon: Icon(Icons.chat_bubble_outline_rounded,
@@ -345,18 +385,12 @@ class SpecialistDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 22),
                       _GuaranteeCard(),
                       const SizedBox(height: 22),
-                      SectionLabel(
-                        label: '${s.reviews} · ${sp.reviewCount}',
-                        trailing: TextButton(
-                          onPressed: () {},
-                          child: Text(s.allReviews,
-                              style: TextStyle(
-                                color: t.blue,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                              )),
-                        ),
-                      ),
+                      // All reviews render below, so no "show all" affordance is
+                      // needed (it used to be a dead button).
+                      SectionLabel(label: '${s.reviews} · ${sp.reviewCount}'),
+                      if (sp.reviews.isEmpty)
+                        Text('Пока нет отзывов',
+                            style: TextStyle(color: t.textTer, fontSize: 13)),
                       ...sp.reviews.map((r) => _ReviewCard(r: r)),
                     ],
                   ),

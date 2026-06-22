@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/strings.dart';
 import '../models/booking.dart';
@@ -915,6 +917,94 @@ class _SpecialistMini extends StatelessWidget {
   }
 }
 
+Future<void> _dialOrCopy(BuildContext context, String number) async {
+  final uri = Uri(scheme: 'tel', path: number);
+  final launched = await launchUrl(uri).catchError((_) => false);
+  if (!launched && context.mounted) {
+    // Web/desktop without a dialer — copy so the user can call manually.
+    await Clipboard.setData(ClipboardData(text: number));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Номер $number скопирован')),
+      );
+    }
+  }
+}
+
+void _showCrisisSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) {
+      final t = sheetCtx.nuva;
+      Widget line(String title, String number, IconData icon) => GlassCard(
+            onTap: () => _dialOrCopy(sheetCtx, number),
+            elevated: true,
+            radius: 16,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: t.danger, size: 22),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(title,
+                      style: TextStyle(
+                          color: t.text,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600)),
+                ),
+                Text(number,
+                    style: TextStyle(
+                        color: t.danger,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(width: 8),
+                Icon(Icons.phone_rounded, color: t.danger, size: 18),
+              ],
+            ),
+          );
+      return Container(
+        decoration: BoxDecoration(
+          color: t.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: t.glassBorder),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            20, 12, 20, 20 + MediaQuery.viewPaddingOf(sheetCtx).bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: t.textTer,
+                    borderRadius: BorderRadius.circular(999)),
+              ),
+            ),
+            Text('Срочная помощь',
+                style: TextStyle(
+                    color: t.text, fontSize: 19, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+              'Если вам или близкому угрожает опасность — позвоните прямо сейчас. '
+              'Это бесплатно и анонимно.',
+              style: TextStyle(color: t.textSec, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            line('Телефон доверия (Казахстан)', '150', Icons.favorite_rounded),
+            const SizedBox(height: 10),
+            line('Экстренные службы', '112', Icons.local_hospital_rounded),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _EmergencyCard extends StatelessWidget {
   final String label;
   const _EmergencyCard({required this.label});
@@ -923,7 +1013,7 @@ class _EmergencyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.nuva;
     return GlassCard(
-      onTap: () {},
+      onTap: () => _showCrisisSheet(context),
       radius: 18,
       padding: const EdgeInsets.all(14),
       child: Row(

@@ -307,6 +307,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         fontWeight: FontWeight.w600),
                   ),
                 ),
+                if (!_register)
+                  TextButton(
+                    onPressed:
+                        _busy ? null : () => context.push('/auth/forgot'),
+                    child: Text(
+                      S.of(ref).forgotPassword,
+                      style: TextStyle(color: t.textSec, fontSize: 13),
+                    ),
+                  ),
                 if (_busy)
                   const Padding(
                     padding: EdgeInsets.only(top: 12),

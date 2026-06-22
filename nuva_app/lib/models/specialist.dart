@@ -37,6 +37,10 @@ class Specialist {
   /// Server-computed (accepts_instant + verified + not expired).
   final bool instantAvailable;
 
+  /// Whether the signed-in user has this specialist in their favorites
+  /// (only populated by the detail endpoint).
+  final bool isFavorite;
+
   const Specialist({
     required this.id,
     required this.firstName,
@@ -59,6 +63,7 @@ class Specialist {
     this.isVerified = true,
     this.availability = const {},
     this.instantAvailable = false,
+    this.isFavorite = false,
   });
 
   String get fullName => '$firstName $lastName';
@@ -104,6 +109,7 @@ class Specialist {
       isVerified: (m['is_verified'] as bool?) ?? false,
       availability: _parseAvailability(m['availability']),
       instantAvailable: (m['instant_available'] as bool?) ?? false,
+      isFavorite: (m['is_favorite'] as bool?) ?? false,
     );
   }
 

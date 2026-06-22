@@ -22,6 +22,10 @@ void main() {
         '/legal/about',
         // The entry quiz is reachable by a guest before sign-up.
         '/quiz',
+        // Password reset must be reachable while signed out.
+        '/auth/forgot',
+        '/reset-password',
+        '/reset-password?uid=abc&token=xyz',
       ]) {
         expect(isPublicRoute(r), isTrue, reason: '$r should be public');
       }

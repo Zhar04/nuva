@@ -23,6 +23,37 @@ final specialistsProvider = FutureProvider<List<Specialist>>((ref) async {
   }
 });
 
+/// The signed-in user's favorite specialists (empty when offline / signed out).
+/// Watches the auth state so it refreshes on login/logout.
+final favoritesProvider = FutureProvider<List<Specialist>>((ref) async {
+  ref.watch(backendAuthProvider); // rebuild when the session changes
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  if (token == null) return const [];
+  try {
+    final rows = await ref
+        .watch(apiClientProvider)
+        .getList('specialists/favorites', token: token);
+    return rows
+        .map((m) => Specialist.fromMap(m as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return const [];
+  }
+});
+
+/// Toggle a specialist in the user's favorites; returns the new favorite state.
+/// Takes a [WidgetRef] so it can be called straight from a widget callback.
+Future<bool> toggleFavorite(WidgetRef ref, String specialistId) async {
+  final token = ref.read(backendAuthProvider.notifier).accessToken;
+  final id = int.tryParse(specialistId);
+  if (token == null || id == null) return false;
+  final res = await ref
+      .read(apiClientProvider)
+      .post('specialists/favorites', {'specialist': id}, token: token);
+  ref.invalidate(favoritesProvider);
+  return (res['favorite'] as bool?) ?? false;
+}
+
 /// Full specialist (with education + reviews) from the backend detail endpoint;
 /// falls back to the list item / mock.
 final specialistDetailProvider =

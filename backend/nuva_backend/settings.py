@@ -199,3 +199,25 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 # "Поговорить сейчас": promised response time (minutes) shown to the client and
 # stamped on each callback InstantRequest. Tunable without a code change.
 INSTANT_RESPOND_MIN = int(os.getenv("INSTANT_RESPOND_MIN", "15"))
+
+# ─── Email (password reset) ───────────────────────────────────────
+# Console backend by default (dev): the reset email is printed to the server log
+# so the flow is testable without SMTP. Set EMAIL_HOST/EMAIL_HOST_USER/
+# EMAIL_HOST_PASSWORD (+ EMAIL_PORT, EMAIL_USE_TLS) in Railway Variables to send
+# real mail — the rest of the flow is already complete.
+if os.getenv("EMAIL_HOST"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.getenv("EMAIL_HOST")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", "True")
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Nuva <no-reply@nuva.kz>")
+
+# Where the password-reset link points (the Flutter PWA route that reads
+# ?uid=&token= and posts to /password/reset/confirm).
+FRONTEND_RESET_URL = os.getenv(
+    "FRONTEND_RESET_URL", "https://zhar04.github.io/nuva/#/reset-password"
+)

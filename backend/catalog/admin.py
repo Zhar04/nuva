@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Education, Review, Specialist
+from .models import Education, Favorite, Review, Specialist
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ("user", "specialist", "created_at")
+    raw_id_fields = ("user", "specialist")
 
 
 class EducationInline(admin.TabularInline):

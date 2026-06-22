@@ -1,8 +1,9 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Specialist
+from .models import Favorite, Specialist
 from .serializers import (
     SpecialistDetailSerializer,
     SpecialistListSerializer,
@@ -11,15 +12,68 @@ from .serializers import (
 
 
 class SpecialistListView(generics.ListAPIView):
-    """GET /api/v1/specialists/ — public, plain list (catalog is small)."""
+    """GET /api/v1/specialists/ — public list, with optional filters:
+    `?q=` (name / works_with / approaches), `?lang=`, `?instant=1`."""
 
     serializer_class = SpecialistListSerializer
     permission_classes = [permissions.AllowAny]
     pagination_class = None
-    # Only verified psychologists are shown to clients. A freshly self-registered
-    # psychologist stays hidden (and unbookable) until an admin checks their
-    # documents and flips is_verified.
-    queryset = Specialist.objects.filter(is_active=True, is_verified=True)
+
+    def get_queryset(self):
+        # Only verified psychologists are shown to clients. A freshly
+        # self-registered psychologist stays hidden until an admin verifies them.
+        qs = Specialist.objects.filter(is_active=True, is_verified=True)
+        p = self.request.query_params
+        q = (p.get("q") or "").strip().lower()
+        lang = (p.get("lang") or "").strip().lower()
+        instant = p.get("instant")
+        if q or lang or instant in ("1", "true"):
+            # JSONField text search isn't portable to SQLite, so filter the small
+            # verified catalog in Python.
+            out = []
+            for sp in qs:
+                if q:
+                    hay = " ".join([
+                        sp.first_name, sp.last_name, sp.title,
+                        *(sp.works_with or []), *(sp.approaches or []),
+                    ]).lower()
+                    if q not in hay:
+                        continue
+                if lang and not any(lang in str(x).lower()
+                                    for x in (sp.languages or [])):
+                    continue
+                if instant in ("1", "true") and not sp.is_instant_available():
+                    continue
+                out.append(sp)
+            return out
+        return qs
+
+
+class FavoritesView(APIView):
+    """GET /api/v1/specialists/favorites — the signed-in user's saved
+    specialists. POST {specialist} toggles one. Owner-scoped."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        specs = [
+            f.specialist
+            for f in Favorite.objects.filter(user=request.user)
+            .select_related("specialist")
+        ]
+        data = SpecialistListSerializer(
+            specs, many=True, context={"request": request}
+        ).data
+        return Response(data)
+
+    def post(self, request):
+        sp = get_object_or_404(Specialist, pk=request.data.get("specialist"))
+        fav, created = Favorite.objects.get_or_create(
+            user=request.user, specialist=sp
+        )
+        if not created:
+            fav.delete()
+        return Response({"specialist": sp.id, "favorite": created})
 
 
 class SpecialistDetailView(generics.RetrieveAPIView):

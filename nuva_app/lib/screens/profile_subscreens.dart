@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../models/booking.dart';
 import '../models/gamification.dart';
-import '../models/specialist.dart';
 import '../services/data.dart';
 import '../theme/theme.dart';
 import '../widgets/avatar.dart';
@@ -263,13 +262,26 @@ class JournalScreen extends ConsumerWidget {
   }
 }
 
-class FavoritesScreen extends StatelessWidget {
+class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.nuva;
-    final favs = specialistCatalog.take(2).toList();
+    final favs = ref.watch(favoritesProvider).valueOrNull ?? const [];
+    if (favs.isEmpty) {
+      return _Sub(
+        title: 'Избранные специалисты',
+        child: Padding(
+          padding: const EdgeInsets.only(top: 24),
+          child: Text(
+            'Пока пусто. Откройте профиль специалиста и нажмите ♥, '
+            'чтобы сохранить его здесь.',
+            style: TextStyle(color: t.textSec, fontSize: 14, height: 1.5),
+          ),
+        ),
+      );
+    }
     return _Sub(
       title: 'Избранные специалисты',
       child: Column(

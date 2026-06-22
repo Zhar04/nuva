@@ -60,3 +60,93 @@ class InstantToggleTests(APITestCase):
         self.assertTrue(self.sp.is_instant_available(now))
         self.sp.instant_until = now - timezone.timedelta(minutes=1)
         self.assertFalse(self.sp.is_instant_available(now))  # expired
+
+
+class FavoritesTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="seeker@nuva.kz", password="Test12345"
+        )
+        self.sp = Specialist.objects.create(
+            first_name="Аяна", last_name="С.", title="Психолог",
+            works_with=["Тревога"], languages=["русский"],
+            rating="4.8", is_verified=True, is_active=True,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_toggle_adds_then_removes(self):
+        add = self.client.post(
+            "/api/v1/specialists/favorites",
+            {"specialist": self.sp.id},
+            format="json",
+        )
+        self.assertTrue(add.data["favorite"])
+        self.assertEqual(
+            self.client.get("/api/v1/specialists/favorites").data.__len__(), 1
+        )
+        # Toggling again removes it.
+        rm = self.client.post(
+            "/api/v1/specialists/favorites",
+            {"specialist": self.sp.id},
+            format="json",
+        )
+        self.assertFalse(rm.data["favorite"])
+        self.assertEqual(
+            self.client.get("/api/v1/specialists/favorites").data.__len__(), 0
+        )
+
+    def test_favorites_are_owner_scoped(self):
+        self.client.post(
+            "/api/v1/specialists/favorites",
+            {"specialist": self.sp.id},
+            format="json",
+        )
+        other = User.objects.create_user(email="o@nuva.kz", password="Test12345")
+        oc = APIClient()
+        oc.force_authenticate(other)
+        self.assertEqual(oc.get("/api/v1/specialists/favorites").data, [])
+
+    def test_detail_reports_is_favorite(self):
+        self.client.post(
+            "/api/v1/specialists/favorites",
+            {"specialist": self.sp.id},
+            format="json",
+        )
+        res = self.client.get(f"/api/v1/specialists/{self.sp.id}")
+        self.assertTrue(res.data["is_favorite"])
+
+    def test_requires_auth(self):
+        self.assertEqual(
+            APIClient().get("/api/v1/specialists/favorites").status_code, 401
+        )
+
+
+class CatalogSearchTests(APITestCase):
+    # NB: a seed migration pre-populates the catalog, so use a unique marker
+    # ("Цитрус") and assert on membership, not absolute counts.
+    def setUp(self):
+        Specialist.objects.create(
+            first_name="Зухра", last_name="Цитрусовна", title="Цитрус-психолог",
+            works_with=["Цитрустерапия"], languages=["волапюк"],
+            rating="4.9", is_verified=True, is_active=True,
+        )
+
+    def test_q_filters_by_unique_topic(self):
+        res = self.client.get("/api/v1/specialists/?q=цитрустерапия")
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["first_name"], "Зухра")
+
+    def test_q_for_unknown_term_returns_nothing(self):
+        res = self.client.get("/api/v1/specialists/?q=небывалыйзапрос")
+        self.assertEqual(len(res.data), 0)
+
+    def test_lang_filter_unique(self):
+        res = self.client.get("/api/v1/specialists/?lang=волапюк")
+        self.assertEqual(len(res.data), 1)
+
+    def test_no_filter_returns_seeded_plus_mine(self):
+        res = self.client.get("/api/v1/specialists/")
+        names = [s["first_name"] for s in res.data]
+        self.assertIn("Зухра", names)
+        self.assertGreaterEqual(len(res.data), 1)

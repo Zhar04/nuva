@@ -1087,6 +1087,53 @@ class S {
         AppLang.en: 'This email is already registered. Try signing in.',
       });
 
+  // ─── Password reset ─────────────────────────────────────────────
+  String get forgotPassword => _pick({
+        AppLang.ru: 'Забыли пароль?',
+        AppLang.kk: 'Парольді ұмыттыңыз ба?',
+        AppLang.en: 'Forgot password?',
+      });
+  String get resetTitle => _pick({
+        AppLang.ru: 'Сброс пароля',
+        AppLang.kk: 'Парольді қалпына келтіру',
+        AppLang.en: 'Reset password',
+      });
+  String get resetRequestHint => _pick({
+        AppLang.ru: 'Укажите email — пришлём ссылку для сброса пароля.',
+        AppLang.kk: 'Email енгізіңіз — парольді қалпына келтіру сілтемесін жібереміз.',
+        AppLang.en: 'Enter your email — we’ll send a reset link.',
+      });
+  String get resetSend => _pick({
+        AppLang.ru: 'Отправить ссылку',
+        AppLang.kk: 'Сілтемені жіберу',
+        AppLang.en: 'Send link',
+      });
+  String get resetSent => _pick({
+        AppLang.ru: 'Если такой аккаунт есть, мы отправили ссылку на email.',
+        AppLang.kk: 'Егер мұндай аккаунт болса, email-ге сілтеме жібердік.',
+        AppLang.en: 'If that account exists, we’ve sent a reset link.',
+      });
+  String get resetNewPassword => _pick({
+        AppLang.ru: 'Новый пароль',
+        AppLang.kk: 'Жаңа пароль',
+        AppLang.en: 'New password',
+      });
+  String get resetSave => _pick({
+        AppLang.ru: 'Сохранить пароль',
+        AppLang.kk: 'Парольді сақтау',
+        AppLang.en: 'Save password',
+      });
+  String get resetDone => _pick({
+        AppLang.ru: 'Пароль обновлён. Войдите с новым паролем.',
+        AppLang.kk: 'Пароль жаңартылды. Жаңа парольмен кіріңіз.',
+        AppLang.en: 'Password updated. Sign in with the new one.',
+      });
+  String get resetInvalidLink => _pick({
+        AppLang.ru: 'Ссылка недействительна или устарела. Запросите новую.',
+        AppLang.kk: 'Сілтеме жарамсыз немесе ескірген. Жаңасын сұраңыз.',
+        AppLang.en: 'This link is invalid or expired. Request a new one.',
+      });
+
   // ─── Legal screens ──────────────────────────────────────────────
   /// Honest banner shown above every legal document: this is a draft, the
   /// authoritative version is RU and finalized by a lawyer before launch.

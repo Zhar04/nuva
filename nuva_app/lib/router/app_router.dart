@@ -18,6 +18,7 @@ import '../screens/mbti_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/onboarding_specialist_screen.dart';
 import '../screens/onboarding_user_screen.dart';
+import '../screens/password_reset_screen.dart';
 import '../screens/payment_screen.dart';
 import '../screens/payment_success_screen.dart';
 import '../screens/profile_edit_screen.dart';
@@ -43,6 +44,7 @@ const _publicPrefixes = <String>[
   '/role',
   '/legal',
   '/quiz',
+  '/reset-password',
 ];
 
 /// Whether [location] is reachable without a signed-in account. Exposed for
@@ -139,6 +141,19 @@ Future<GoRouter> buildRouter(ProviderContainer container) async {
         path: '/auth',
         builder: (_, st) => AuthScreen(
             initialRegister: st.uri.queryParameters['mode'] == 'register'),
+      ),
+      // Password reset: request (from the login screen) + confirm (from the
+      // email link, carrying uid+token).
+      GoRoute(
+        path: '/auth/forgot',
+        builder: (_, __) => const PasswordResetRequestScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, st) => PasswordResetConfirmScreen(
+          uid: st.uri.queryParameters['uid'] ?? '',
+          token: st.uri.queryParameters['token'] ?? '',
+        ),
       ),
 
       // Registration + onboarding pipelines (Epic 3)
