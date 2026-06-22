@@ -189,7 +189,8 @@ class PrimaryButton extends StatelessWidget {
             letterSpacing: 0.2,
           ),
         ).copyWith(
-          overlayColor: WidgetStateProperty.all(t.blueDeep.withOpacity(0.15)),
+          overlayColor:
+              WidgetStateProperty.all(t.blueDeep.withValues(alpha: 0.15)),
         ),
         child: icon == null
             ? Text(label)

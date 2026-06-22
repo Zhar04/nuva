@@ -5,7 +5,8 @@ nuva_app/.flutter-plugins-dependencies
 nuva_app/build/
 nuva_app/.pub-cache/
 nuva_app/.pub/
-nuva_app/pubspec.lock
+# NB: pubspec.lock IS committed — this is an application, so a pinned lockfile
+# gives reproducible builds (and CI). (Flutter recommends committing it for apps.)
 
 # Secrets — never commit
 nuva_app/.env

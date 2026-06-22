@@ -1,0 +1,52 @@
+name: CI
+
+# Run the backend + frontend test suites on every push/PR so a red change can't
+# reach main (which auto-deploys to Railway / ships to gh-pages).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Django) tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run tests (SQLite — no DATABASE_URL)
+        env:
+          DATABASE_URL: ""
+          SECRET_KEY: ci-secret-not-used-in-prod
+          DEBUG: "True"
+        run: python manage.py test --verbosity 2
+
+  frontend:
+    name: Frontend (Flutter) analyze + test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nuva_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install deps
+        run: flutter pub get
+      - name: Create .env (assets require it to exist)
+        run: cp .env.example .env
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test

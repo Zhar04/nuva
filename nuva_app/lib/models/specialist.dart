@@ -168,16 +168,6 @@ const _defaultSlots = [
   '20:00',
 ];
 
-List<String> _nextDates(int count) {
-  final now = DateTime.now();
-  return List.generate(count, (i) {
-    final d = now.add(Duration(days: i + 1));
-    return '${d.year.toString().padLeft(4, '0')}-'
-        '${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
-  });
-}
-
 final specialistCatalog = <Specialist>[
   Specialist(
     id: 'aigul',

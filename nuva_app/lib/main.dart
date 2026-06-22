@@ -11,20 +11,23 @@ import 'services/observability.dart';
 import 'theme/theme.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // If .env is missing (e.g. a static host that hides dotfiles), keep dotenv
-    // INITIALIZED with an empty map — otherwise every dotenv.env[...] access
-    // throws NotInitializedError and the app white-screens on startup.
-    dotenv.testLoad(fileInput: '');
-  }
-
-  await initializeDateFormatting('ru');
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-
+  // Everything runs inside Observability.guard's zone (incl. binding init) so
+  // the zone the framework binds to is the same one runZonedGuarded watches —
+  // otherwise Flutter throws a "Zone mismatch" at startup.
   await Observability.guard(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      // If .env is missing (e.g. a static host that hides dotfiles), keep dotenv
+      // INITIALIZED with an empty map — otherwise every dotenv.env[...] access
+      // throws NotInitializedError and the app white-screens on startup.
+      dotenv.testLoad(fileInput: '');
+    }
+
+    await initializeDateFormatting('ru');
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
     // One shared container so the router's redirect/refreshListenable read the
     // same auth state the widget tree does (the router is built before the
     // ProviderScope, so it can't use a WidgetRef).

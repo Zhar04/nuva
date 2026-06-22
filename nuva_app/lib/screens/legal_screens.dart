@@ -126,6 +126,8 @@ class LegalScreen extends ConsumerWidget {
 enum LegalDoc { privacy, terms, about }
 
 extension LegalContent on LegalDoc {
+  // _LegalData is an internal value type only used inside this file's widgets.
+  // ignore: library_private_types_in_public_api
   _LegalData get content => switch (this) {
         LegalDoc.privacy => const _LegalData(
             title: 'Конфиденциальность',

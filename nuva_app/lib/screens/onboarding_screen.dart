@@ -232,7 +232,10 @@ class _OnboardingPage extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [t.blue.withOpacity(0.25), t.blue.withOpacity(0)],
+                colors: [
+                  t.blue.withValues(alpha: 0.25),
+                  t.blue.withValues(alpha: 0)
+                ],
               ),
             ),
             child: Icon(icon, size: 48, color: t.blue),

@@ -1,3 +1,6 @@
+// Web-only implementation, pulled in via a conditional import — the dart:html
+// dependency is expected here.
+// ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 
