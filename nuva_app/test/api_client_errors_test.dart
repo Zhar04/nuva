@@ -5,9 +5,50 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:nuva/l10n/strings.dart';
+import 'package:nuva/screens/auth_screen.dart';
 import 'package:nuva/services/api_client.dart';
 
 void main() {
+  group('friendlyAuthMessage maps server errors to friendly copy', () {
+    const s = S(AppLang.ru);
+
+    test('weak/common password → pwTooCommon', () {
+      final e = ApiException(400, {
+        'password': ['Введённый пароль слишком широко распространён.'],
+      });
+      expect(friendlyAuthMessage(e, s), s.pwTooCommon);
+    });
+
+    test('short password → pwTooShort', () {
+      final e = ApiException(400, {
+        'password': [
+          'Введённый пароль слишком короткий. Он должен содержать минимум 8 символов.'
+        ],
+      });
+      expect(friendlyAuthMessage(e, s), s.pwTooShort);
+    });
+
+    test('all-numeric password → pwTooNumeric', () {
+      final e = ApiException(400, {
+        'password': ['Введённый пароль состоит только из цифр.'],
+      });
+      expect(friendlyAuthMessage(e, s), s.pwTooNumeric);
+    });
+
+    test('email already exists → emailTaken', () {
+      final e = ApiException(400, {
+        'email': ['user с таким email уже существует.'],
+      });
+      expect(friendlyAuthMessage(e, s), s.emailTaken);
+    });
+
+    test('unrecognized field error falls back to server text', () {
+      final e = ApiException(400, {'detail': 'Что-то пошло не так'});
+      expect(friendlyAuthMessage(e, s), 'Что-то пошло не так');
+    });
+  });
+
   test('ApiException.message reads a DRF field error (email taken)', () {
     final e = ApiException(400, {
       'email': ['user с таким email уже существует.'],

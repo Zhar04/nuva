@@ -2,12 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../l10n/strings.dart';
 import '../models/user_profile.dart';
 import '../services/api_client.dart';
 import '../services/backend_auth.dart';
 import '../services/lead_capture.dart';
 import '../theme/theme.dart';
 import '../widgets/glass.dart';
+
+/// Turn a DRF auth validation error into friendly, localized copy. The backend's
+/// password validators answer in Russian (e.g. "слишком широко распространён");
+/// we match on stable keywords so the mapping survives wording tweaks, and fall
+/// back to the server's own text for anything we don't special-case. Top-level +
+/// pure so it can be unit-tested without a widget.
+String friendlyAuthMessage(ApiException e, S s) {
+  String? firstError(dynamic field) {
+    if (field is List && field.isNotEmpty) return field.first.toString();
+    if (field is String && field.isNotEmpty) return field;
+    return null;
+  }
+
+  final pw = firstError(e.body['password']);
+  if (pw != null) {
+    final low = pw.toLowerCase();
+    if (low.contains('распростран') || low.contains('common')) {
+      return s.pwTooCommon;
+    }
+    if (low.contains('коротк') || low.contains('short') || low.contains('8 ')) {
+      return s.pwTooShort;
+    }
+    if (low.contains('цифр') || low.contains('numeric')) return s.pwTooNumeric;
+    return pw; // some other password rule — show the server's wording
+  }
+  final email = firstError(e.body['email']);
+  if (email != null) {
+    final low = email.toLowerCase();
+    if (low.contains('существ') || low.contains('exist') ||
+        low.contains('unique')) {
+      return s.emailTaken;
+    }
+    return email;
+  }
+  return e.message;
+}
 
 /// Email + password sign-in / registration against the Nuva backend (JWT).
 /// Non-blocking: "Продолжить без аккаунта" keeps the app usable.
@@ -44,6 +81,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       content: Text(msg, style: const TextStyle(color: Colors.white)),
     ));
   }
+
+  String _friendlyAuthError(ApiException e) => friendlyAuthMessage(e, S.of(ref));
 
   Future<void> _submit() async {
     final email = _email.text.trim();
@@ -90,9 +129,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         // to the auth state change and honors any ?next= intended route).
       }
     } on ApiException catch (e) {
-      // The server answered with an error (e.g. 400 "email уже занят") — show
-      // its real message, not a misleading "no connection".
-      _snack(e.message, error: true);
+      // The server answered with an error (e.g. 400 weak password / email
+      // taken). Map the common cases to friendly, localized copy; otherwise
+      // fall back to the server's own message — never "no connection".
+      _snack(_friendlyAuthError(e), error: true);
     } on NetworkException {
       _snack('Нет связи с сервером. Проверьте интернет.', error: true);
     } catch (e) {
@@ -210,6 +250,27 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   decoration: deco('Пароль (мин. 8 символов)',
                       Icons.lock_outline_rounded),
                 ),
+                if (_register) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 14, color: t.textTer),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            S.of(ref).pwHint,
+                            style: TextStyle(
+                                color: t.textTer, fontSize: 11.5, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 PrimaryButton(
                   label: _register ? 'Зарегистрироваться' : 'Войти',

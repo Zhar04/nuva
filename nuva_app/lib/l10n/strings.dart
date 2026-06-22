@@ -1060,6 +1060,33 @@ class S {
         AppLang.en: 'Accept instant “Talk now” sessions (for 1 hour)',
       });
 
+  // ─── Auth (password help + friendly server errors) ──────────────
+  String get pwHint => _pick({
+        AppLang.ru: 'Минимум 8 символов. Не используйте простые пароли (12345678, qwerty, password).',
+        AppLang.kk: 'Кемінде 8 таңба. Қарапайым парольдерді қолданбаңыз (12345678, qwerty, password).',
+        AppLang.en: 'At least 8 characters. Avoid common passwords (12345678, qwerty, password).',
+      });
+  String get pwTooCommon => _pick({
+        AppLang.ru: 'Этот пароль слишком простой. Придумайте более надёжный — с буквами, цифрами и символом.',
+        AppLang.kk: 'Бұл пароль тым қарапайым. Әріптер, сандар және белгісі бар сенімдірек парольді ойлап табыңыз.',
+        AppLang.en: 'That password is too common. Choose a stronger one — mix letters, numbers and a symbol.',
+      });
+  String get pwTooShort => _pick({
+        AppLang.ru: 'Пароль слишком короткий — минимум 8 символов.',
+        AppLang.kk: 'Пароль тым қысқа — кемінде 8 таңба.',
+        AppLang.en: 'Password is too short — at least 8 characters.',
+      });
+  String get pwTooNumeric => _pick({
+        AppLang.ru: 'Пароль не должен состоять только из цифр.',
+        AppLang.kk: 'Пароль тек сандардан тұрмауы керек.',
+        AppLang.en: 'Password can’t be entirely numeric.',
+      });
+  String get emailTaken => _pick({
+        AppLang.ru: 'Этот email уже зарегистрирован. Попробуйте войти.',
+        AppLang.kk: 'Бұл email тіркелген. Кіріп көріңіз.',
+        AppLang.en: 'This email is already registered. Try signing in.',
+      });
+
   // ─── Legal screens ──────────────────────────────────────────────
   /// Honest banner shown above every legal document: this is a draft, the
   /// authoritative version is RU and finalized by a lawyer before launch.
